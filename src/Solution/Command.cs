@@ -2,7 +2,7 @@
 {
     using System;
 
-    public class CoordDiff
+    public struct CoordDiff
     {
         public int Dx;
         public int Dy;

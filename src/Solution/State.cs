@@ -12,7 +12,7 @@
         Low
     }
 
-    internal class TCoord
+    internal struct TCoord
     {
         public int X;
         public int Y;
