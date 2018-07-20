@@ -1,57 +1,46 @@
-﻿using System.Data.SqlTypes;
+﻿using System;
 using System.IO;
-using System.Numerics;
-using System.Runtime.ExceptionServices;
-using System.Runtime.InteropServices;
 using System.Text;
-using System.Threading;
 
 namespace Sample
 {
-    using System;
-
     internal class TMdl
     {
-        public byte R;
         public int[,,] Matrix;
+        public byte R;
 
         public TMdl()
         {
-
         }
 
         public TMdl(string path)
         {
-            TMdl result = new TMdl();
+            var result = new TMdl();
 
-            FileStream fs = new FileStream(path, FileMode.Open, FileAccess.Read);
-            BinaryReader br = new BinaryReader(fs, new ASCIIEncoding());
+            var fs = new FileStream(path, FileMode.Open, FileAccess.Read);
+            var br = new BinaryReader(fs, new ASCIIEncoding());
 
             int R = br.ReadByte();
             Matrix = new int[R, R, R];
 
-            int bytesCount = (int) Math.Ceiling((float)Matrix.Length / 8);
-            byte[] bytes = br.ReadBytes(bytesCount);
+            var bytesCount = (int) Math.Ceiling((float) Matrix.Length / 8);
+            var bytes = br.ReadBytes(bytesCount);
 
-            for (int x = 0; x < R; ++x)
+            for (var x = 0; x < R; ++x)
+            for (var y = 0; y < R; ++y)
+            for (var z = 0; z < R; ++z)
             {
-                for (int y = 0; y < R; ++y)
-                {
-                    for (int z = 0; z < R; ++z)
-                    {
-                        int bitNumber = x * R * R + y * R + z;
+                var bitNumber = x * R * R + y * R + z;
 
-                        int byteNumber = bitNumber / 8;
+                var byteNumber = bitNumber / 8;
 
-                        int shift = bitNumber % 8;
+                var shift = bitNumber % 8;
 
-                        int mask = 1 << shift;
-                        int curByte = bytes[byteNumber];
-                        int curRes = curByte & mask;
+                var mask = 1 << shift;
+                int curByte = bytes[byteNumber];
+                var curRes = curByte & mask;
 
-                        Matrix[x, y, z] = curRes > 0 ? 1 : 0;
-                    }
-                }
+                Matrix[x, y, z] = curRes > 0 ? 1 : 0;
             }
         }
     }
@@ -60,7 +49,7 @@ namespace Sample
     {
         private static void Main(string[] args)
         {
-            TMdl mdl = new TMdl("problems/LA001_tgt.mdl");
+            var mdl = new TMdl("problems/LA001_tgt.mdl");
         }
     }
 }
