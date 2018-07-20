@@ -35,22 +35,23 @@
     {
         public int Bid;
 
-        public TCoord Coord;
+        public TCoord Coord = new TCoord();
 
-        public List<int> Seeds;
+        public List<int> Seeds = new List<int>();
     }
 
     internal class TState
     {
-        public TBot[] Bots;
+        public List<TBot> Bots = new List<TBot>();
 
-        public object[] Commands;
+        public List<object> Commands = new List<object>();
 
         public int Energy;
 
         public EHarmonics Harmonics = EHarmonics.Low;
 
         public int[,,] Matrix;
+        public int[,,] TargetMatrix;
 
         public byte R;
 
@@ -61,8 +62,10 @@
 
             int R = br.ReadByte();
 
+            TargetMatrix = new int[R, R, R];
             Matrix = new int[R, R, R];
-            var bytesCount = (int)Math.Ceiling((float)Matrix.Length / 8);
+
+            var bytesCount = (int)Math.Ceiling((float)TargetMatrix.Length / 8);
             var bytes = br.ReadBytes(bytesCount);
 
             for (var x = 0; x < R; ++x)
@@ -81,27 +84,28 @@
                         int curByte = bytes[byteNumber];
                         var curRes = curByte & mask;
 
-                        Matrix[x, y, z] = curRes > 0 ? 1 : 0;
+                        TargetMatrix[x, y, z] = curRes > 0 ? 1 : 0;
                     }
                 }
             }
 
             TBot bot = new TBot();
             bot.Bid = 1;
-            bot.Coord = new TCoord();
             bot.Coord.X = 0;
             bot.Coord.Y = 0;
             bot.Coord.Z = 0;
-            bot.Seeds = new List<int>();
             for (int i = 2; i <= 20; ++i)
             {
                 bot.Seeds.Add(i);
             }
+
+            Energy = 0;
+            Harmonics = EHarmonics.Low;
         }
 
         private void ApplyCommands()
         {
-            var botsCount = Bots.Length;
+            var botsCount = Bots.Count;
             for (var botIdx = 0; botIdx < botsCount; ++botIdx)
             {
                 var command = Commands[botIdx];
