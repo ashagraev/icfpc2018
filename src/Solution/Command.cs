@@ -1,6 +1,7 @@
 ﻿namespace Solution
 {
     using System;
+    using System.Collections.Generic;
 
     public struct CoordDiff
     {
@@ -70,5 +71,23 @@
         public CoordDiff Diff;
 
         public override string ToString() => string.Format("FusionS(d={0})", Diff);
+    }
+
+    public class TCommands
+    {
+        public List<object> Commands;
+        public int Pos = 0;
+
+        public bool AtEnd() => Pos >= Commands.Count;
+
+        public void Advance(int count)
+        {
+            Pos += count;
+        }
+
+        public object GetCommand(int idx)
+        {
+            return Commands[Pos + idx];
+        }
     }
 }

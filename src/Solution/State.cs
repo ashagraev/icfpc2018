@@ -115,7 +115,7 @@
             Harmonics = EHarmonics.Low;
         }
 
-        public void ApplyCommands(List<object> commands)
+        public void ApplyCommands(TCommands commands)
         {
             if (Harmonics == EHarmonics.Low)
             {
@@ -131,7 +131,7 @@
             var botsCount = Bots.Count;
             for (var botIdx = 0; botIdx < botsCount; ++botIdx)
             {
-                var command = commands[botIdx];
+                var command = commands.GetCommand(botIdx);
                 var bot = Bots[botIdx];
 
                 switch (command)
@@ -224,7 +224,7 @@
                 }
             }
 
-            commands.RemoveRange(0, botsCount);
+            commands.Advance(botsCount);
         }
     }
 }

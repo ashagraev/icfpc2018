@@ -8,17 +8,18 @@
         private static void Main(string[] args)
         {
             var state = new TState();
-            state.Load("problems/LA130_tgt.mdl");
+            state.Load("problems/LA186_tgt.mdl");
 
-            List<object> commands = TraceReader.Read("traces/LA130.nbt");
+            TCommands commands = new TCommands();
+            commands.Commands = TraceReader.Read("traces/LA186.nbt");
 
             int step = 0;
-            while (commands.Count > 0)
+            while (!commands.AtEnd())
             {
                 state.ApplyCommands(commands);
                 step += 1;
 
-                if (step % 10000 == 0)
+                if (step % 1000000 == 0)
                 {
                     Console.WriteLine(step);
                 }
