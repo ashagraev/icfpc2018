@@ -32,5 +32,29 @@ namespace Tests
             Assert.AreEqual(0, sm2.Diff.Dy);
             Assert.AreEqual(-4, sm2.Diff.Dz);
         }
+
+        [TestMethod]
+        public void TestLMove()
+        {
+            var commands = TraceReader.Read(new byte[]
+            {
+                0b10011100, 0b00001000, 0b11101100, 0b01110011
+            });
+            Assert.AreEqual(2, commands.Count);
+            var lm1 = commands[0] as LMove;
+            Assert.AreEqual(3, lm1.Diff1.Dx);
+            Assert.AreEqual(0, lm1.Diff1.Dy);
+            Assert.AreEqual(0, lm1.Diff1.Dz);
+            Assert.AreEqual(0, lm1.Diff2.Dx);
+            Assert.AreEqual(-5, lm1.Diff2.Dy);
+            Assert.AreEqual(0, lm1.Diff2.Dz);
+            var lm2 = commands[1] as LMove;
+            Assert.AreEqual(0, lm2.Diff1.Dx);
+            Assert.AreEqual(-2, lm2.Diff1.Dy);
+            Assert.AreEqual(0, lm2.Diff1.Dz);
+            Assert.AreEqual(0, lm2.Diff2.Dx);
+            Assert.AreEqual(0, lm2.Diff2.Dy);
+            Assert.AreEqual(2, lm2.Diff2.Dz);
+        }
     }
 }
