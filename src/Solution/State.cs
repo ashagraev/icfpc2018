@@ -39,7 +39,7 @@
     {
         public List<TBot> Bots = new List<TBot>();
 
-        public int Energy;
+        public long Energy;
         public EHarmonics Harmonics = EHarmonics.Low;
 
         public int[,,] Matrix;
