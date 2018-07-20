@@ -1,11 +1,12 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
-using Sample;
 
 namespace Sample
 {
-    enum EHarmonics
+    internal enum EHarmonics
     {
         High,
         Low
@@ -16,25 +17,37 @@ namespace Sample
         public int X;
         public int Y;
         public int Z;
+
+        public void Apply(CoordDiff diff)
+        {
+            X += diff.Dx;
+            Y += diff.Dy;
+            Z += diff.Dz;
+        }
+
+        public bool IsAtStart()
+        {
+            return X == 0 && Y == 0 && Z == 0;
+        }
     }
 
     internal class TBot
     {
         public int Bid;
         public TCoord Coord;
-        public int[] Seeds;
+        public List<int> Seeds;
     }
 
     internal class TState
     {
-        public byte R;
+        public TBot[] Bots;
+        public object[] Commands;
 
-        public int Energy = 0;
+        public int Energy;
         public EHarmonics Harmonics = EHarmonics.Low;
 
         public int[,,] Matrix;
-        public TBot[] Bots;
-        public object[] Commands;
+        public byte R;
 
         public void Load(string path)
         {
@@ -42,8 +55,8 @@ namespace Sample
             var br = new BinaryReader(fs, new ASCIIEncoding());
 
             int R = br.ReadByte();
-            Matrix = new int[R, R, R];
 
+            Matrix = new int[R, R, R];
             var bytesCount = (int) Math.Ceiling((float) Matrix.Length / 8);
             var bytes = br.ReadBytes(bytesCount);
 
@@ -65,20 +78,87 @@ namespace Sample
             }
         }
 
-        void ApplyCommands()
+        private void ApplyCommands()
         {
-            foreach (object command in Commands)
+            int botsCount = Bots.Length;
+            for (var botIdx = 0; botIdx < botsCount; ++botIdx)
             {
+                var command = Commands[botIdx];
+                var bot = Bots[botIdx];
+
                 switch (command)
                 {
-                    case Halt halt: continue;
-                    case Wait wait: continue;
-                    case Flip flip: continue;
-                    case StraightMove move: continue;
-                    case LMove lMove: continue;
-                    case Fission fission: continue;
-                    case Fill fill: continue;
-                    case Fusion fusion: continue;
+                    case Halt halt: break;
+                    case Wait wait: break;
+                    case Flip flip:
+                    {
+                        if (Harmonics == EHarmonics.High)
+                            Harmonics = EHarmonics.Low;
+                        else
+                            Harmonics = EHarmonics.High;
+
+                        break;
+                    }
+                        ;
+                    case StraightMove move:
+                    {
+                        bot.Coord.Apply(move.Diff);
+                        Energy += 2 * move.Diff.MLen();
+                        break;
+                    }
+                        ;
+                    case LMove lMove:
+                    {
+                        bot.Coord.Apply(lMove.Diff1);
+                        bot.Coord.Apply(lMove.Diff2);
+
+                        Energy += 2 * lMove.Diff1.MLen();
+                        Energy += 2 * lMove.Diff2.MLen();
+                        break;
+                    }
+                        ;
+                    case Fission fission:
+                    {
+                        bot.Seeds.Sort();
+
+                        TBot newBot = new TBot();
+                        newBot.Bid = bot.Seeds[0];
+
+                        for (int i = 1; i <= fission.M; ++i)
+                        {
+                            newBot.Seeds.Append(bot.Seeds[i]);
+                        }
+                        bot.Seeds.RemoveRange(0, fission.M + 1);
+
+                        newBot.Coord = bot.Coord;
+                        newBot.Coord.Apply(fission.Diff);
+
+                        Bots.Append(newBot);
+                        Energy += 24;
+
+                        break;
+                    }
+                    case Fill fill:
+                    {
+                        TCoord newCoord = bot.Coord;
+                        newCoord.Apply(fill.Diff);
+
+                        if (Matrix[newCoord.X, newCoord.Y, newCoord.Z] > 0)
+                        {
+                            Energy += 6;
+                        }
+                        else
+                        {
+                            Matrix[newCoord.X, newCoord.Y, newCoord.Z] = 1;
+                            Energy += 12;
+                        }
+                        break;
+                    }
+                    case Fusion fusion:
+                    {
+                        break;
+                    }
+                    default: throw new InvalidOperationException("unknown item type");
                 }
             }
         }

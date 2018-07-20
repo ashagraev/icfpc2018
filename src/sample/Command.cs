@@ -1,10 +1,17 @@
-﻿namespace Sample
+﻿using System;
+
+namespace Sample
 {
     public class CoordDiff
     {
         public int Dx;
         public int Dy;
         public int Dz;
+
+        public int MLen()
+        {
+            return Math.Abs(Dx) + Math.Abs(Dy) + Math.Abs(Dz);
+        }
     }
 
     public class Halt
