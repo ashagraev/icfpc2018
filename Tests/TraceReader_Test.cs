@@ -1,8 +1,7 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Sample;
-
 namespace Tests
 {
+    using Microsoft.VisualStudio.TestTools.UnitTesting;
+
     [TestClass]
     public class TraceReaderTest
     {
@@ -19,9 +18,14 @@ namespace Tests
         [TestMethod]
         public void TestStraightMove()
         {
-            var commands = TraceReader.Read(new byte[] {
-                0b00010100, 0b00011011, 0b00110100, 0b00001011,
-            });
+            var commands = TraceReader.Read(
+                new byte[]
+                    {
+                        0b00010100,
+                        0b00011011,
+                        0b00110100,
+                        0b00001011
+                    });
             Assert.AreEqual(2, commands.Count);
             var sm1 = commands[0] as StraightMove;
             Assert.AreEqual(12, sm1.Diff.Dx);
@@ -36,10 +40,14 @@ namespace Tests
         [TestMethod]
         public void TestLMove()
         {
-            var commands = TraceReader.Read(new byte[]
-            {
-                0b10011100, 0b00001000, 0b11101100, 0b01110011
-            });
+            var commands = TraceReader.Read(
+                new byte[]
+                    {
+                        0b10011100,
+                        0b00001000,
+                        0b11101100,
+                        0b01110011
+                    });
             Assert.AreEqual(2, commands.Count);
             var lm1 = commands[0] as LMove;
             Assert.AreEqual(3, lm1.Diff1.Dx);
