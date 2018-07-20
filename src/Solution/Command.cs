@@ -75,7 +75,7 @@
 
     public class TCommands
     {
-        public List<object> Commands;
+        public List<object> Commands = new List<object>();
         public int Pos = 0;
 
         public bool AtEnd() => Pos >= Commands.Count;

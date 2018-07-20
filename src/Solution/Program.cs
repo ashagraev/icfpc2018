@@ -10,8 +10,7 @@
             var state = new TState();
             state.Load("problems/LA186_tgt.mdl");
 
-            TCommands commands = new TCommands();
-            commands.Commands = TraceReader.Read("traces/LA186.nbt");
+            TCommands commands = TraceReader.Read("traces/LA186.nbt");
 
             int step = 0;
             while (!commands.AtEnd())

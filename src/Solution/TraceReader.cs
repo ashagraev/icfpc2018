@@ -8,22 +8,22 @@
 
     public class TraceReader
     {
-        public static List<object> Read(byte[] bytes)
+        public static TCommands Read(byte[] bytes)
         {
-            var result = new List<object>();
+            TCommands result = new TCommands();
             var startIndex = 0;
             while (startIndex < bytes.Length)
             {
                 int commandSize;
                 var command = ReadOneCommand(bytes, startIndex, out commandSize);
                 startIndex += commandSize;
-                result.Add(command);
+                result.Commands.Add(command);
             }
 
             return result;
         }
 
-        public static List<object> Read(string path)
+        public static TCommands Read(string path)
         {
             return Read(File.ReadAllBytes(path));
         }
