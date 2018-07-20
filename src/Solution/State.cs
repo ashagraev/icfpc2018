@@ -41,7 +41,6 @@
     internal class TState
     {
         public List<TBot> Bots = new List<TBot>();
-        public List<object> Commands = new List<object>();
 
         public int Energy;
         public EHarmonics Harmonics = EHarmonics.Low;
@@ -51,7 +50,24 @@
 
         public byte R;
 
-        private bool HasValidFinalState() => (Bots.Count == 1) && Bots[0].Coord.IsAtStart() && (Harmonics == EHarmonics.Low);
+        public bool HasValidFinalState()
+        {
+            for (var x = 0; x < R; ++x)
+            {
+                for (var y = 0; y < R; ++y)
+                {
+                    for (var z = 0; z < R; ++z)
+                    {
+                        if (Matrix[x, y, z] != TargetMatrix[x, y, z])
+                        {
+                            return false;
+                        }
+                    }
+                }
+            }
+
+            return (Bots.Count == 1) && Bots[0].Coord.IsAtStart() && (Harmonics == EHarmonics.Low);
+        }
 
         public void Load(string path)
         {
@@ -96,17 +112,18 @@
             {
                 bot.Seeds.Add(i);
             }
+            Bots.Add(bot);
 
             Energy = 0;
             Harmonics = EHarmonics.Low;
         }
 
-        private void ApplyCommands()
+        public void ApplyCommands(List<object> commands)
         {
             var botsCount = Bots.Count;
             for (var botIdx = 0; botIdx < botsCount; ++botIdx)
             {
-                var command = Commands[botIdx];
+                var command = commands[botIdx];
                 var bot = Bots[botIdx];
 
                 switch (command)
@@ -198,6 +215,8 @@
                     default: throw new InvalidOperationException("unknown item type");
                 }
             }
+
+            commands.RemoveRange(0, botsCount);
         }
     }
 }
