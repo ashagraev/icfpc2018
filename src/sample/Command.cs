@@ -48,7 +48,12 @@ namespace Sample
         public CoordDiff Diff;
     }
 
-    public class Fusion
+    public class FusionP
+    {
+        public CoordDiff Diff;
+    }
+
+    public class FusionS
     {
         public CoordDiff Diff;
     }

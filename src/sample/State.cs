@@ -154,7 +154,11 @@ namespace Sample
                         }
                         break;
                     }
-                    case Fusion fusion:
+                    case FusionP fusionP:
+                    {
+                        break;
+                    }
+                    case FusionS fusionS:
                     {
                         break;
                     }
