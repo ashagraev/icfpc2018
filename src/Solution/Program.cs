@@ -18,6 +18,7 @@
             }
 
             Console.WriteLine(state.HasValidFinalState());
+            Console.WriteLine(state.Energy);
         }
     }
 }
