@@ -10,7 +10,7 @@ How to set up .NET Core:
 Windows: https://www.microsoft.com/net/learn/get-started/windows
 Linux: https://www.microsoft.com/net/learn/get-started/linux/ubuntu18-04
 
-Branches: <login>/<feature>
+Branches should follow `<login>/<feature>` format
 Commits into master are fine
 
 Code-style
