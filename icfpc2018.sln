@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.27703.2042
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "sample", "src\sample\sample.csproj", "{A62BA771-BF7B-4D31-952A-61399EDC572D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Solution", "src\Solution\Solution.csproj", "{A62BA771-BF7B-4D31-952A-61399EDC572D}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Toplevel files", "Toplevel files", "{82EDE358-7A18-434C-9A59-897E800F97F6}"
 	ProjectSection(SolutionItems) = preProject
