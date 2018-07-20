@@ -2,7 +2,9 @@
 {
     using System;
     using System.Collections.Generic;
+    using System.IO;
     using System.Linq.Expressions;
+    using System.Text;
 
     public class TraceReader
     {
@@ -19,6 +21,11 @@
             }
 
             return result;
+        }
+
+        public static List<object> Read(string path)
+        {
+            return Read(File.ReadAllBytes(path));
         }
 
         public static object ReadOneCommand(byte[] bytes, int startIndex, out int commandSize)
