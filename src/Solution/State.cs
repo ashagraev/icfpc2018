@@ -74,7 +74,7 @@
             var fs = new FileStream(path, FileMode.Open, FileAccess.Read);
             var br = new BinaryReader(fs, new ASCIIEncoding());
 
-            int R = br.ReadByte();
+            R = br.ReadByte();
 
             TargetMatrix = new int[R, R, R];
             Matrix = new int[R, R, R];
@@ -120,6 +120,17 @@
 
         public void ApplyCommands(List<object> commands)
         {
+            if (Harmonics == EHarmonics.Low)
+            {
+                Energy += 3 * R * R * R;
+            }
+            else if (Harmonics == EHarmonics.High)
+            {
+                Energy += 30 * R * R * R;
+            }
+
+            Energy += 20 * Bots.Count;
+
             var botsCount = Bots.Count;
             for (var botIdx = 0; botIdx < botsCount; ++botIdx)
             {
@@ -156,8 +167,8 @@
                         bot.Coord.Apply(lMove.Diff1);
                         bot.Coord.Apply(lMove.Diff2);
 
-                        Energy += 2 * lMove.Diff1.MLen();
-                        Energy += 2 * lMove.Diff2.MLen();
+                        Energy += 2 * (lMove.Diff1.MLen() + 2 + lMove.Diff2.MLen());
+
                         break;
                     }
 
@@ -215,16 +226,6 @@
                     default: throw new InvalidOperationException("unknown item type");
                 }
             }
-
-            if (Harmonics == EHarmonics.Low)
-            {
-                Energy += 3 * R * R * R;
-            } else if (Harmonics == EHarmonics.High)
-            {
-                Energy += 30 * R * R * R;
-            }
-
-            Energy += 20 * Bots.Count;
 
             commands.RemoveRange(0, botsCount);
         }
