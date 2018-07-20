@@ -2,7 +2,7 @@ namespace Tests
 {
     using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-    using Sample;
+    using Solution;
 
     [TestClass]
     public class TraceReaderTest
