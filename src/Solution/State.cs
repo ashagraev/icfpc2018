@@ -56,6 +56,8 @@
 
         public byte R;
 
+        private bool HasValidFinalState() => (Bots.Count == 1) && Bots[0].Coord.IsAtStart() && (Harmonics == EHarmonics.Low);
+
         public void Load(string path)
         {
             var fs = new FileStream(path, FileMode.Open, FileAccess.Read);
