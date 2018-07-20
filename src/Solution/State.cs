@@ -9,16 +9,13 @@
     internal enum EHarmonics
     {
         High,
-
         Low
     }
 
     internal class TCoord
     {
         public int X;
-
         public int Y;
-
         public int Z;
 
         public void Apply(CoordDiff diff)
@@ -34,25 +31,18 @@
     internal class TBot
     {
         public int Bid;
-
         public TCoord Coord = new TCoord();
-
         public List<int> Seeds = new List<int>();
     }
 
     internal class TState
     {
         public List<TBot> Bots = new List<TBot>();
-
         public List<object> Commands = new List<object>();
-
         public int Energy;
-
         public EHarmonics Harmonics = EHarmonics.Low;
-
         public int[,,] Matrix;
         public int[,,] TargetMatrix;
-
         public byte R;
 
         public void Load(string path)
@@ -129,7 +119,6 @@
                         break;
                     }
 
-                        ;
                     case StraightMove move:
                     {
                         bot.Coord.Apply(move.Diff);
@@ -137,7 +126,6 @@
                         break;
                     }
 
-                        ;
                     case LMove lMove:
                     {
                         bot.Coord.Apply(lMove.Diff1);
@@ -148,7 +136,6 @@
                         break;
                     }
 
-                        ;
                     case Fission fission:
                     {
                         bot.Seeds.Sort();

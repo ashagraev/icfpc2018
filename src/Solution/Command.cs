@@ -5,9 +5,7 @@
     public class CoordDiff
     {
         public int Dx;
-
         public int Dy;
-
         public int Dz;
 
         public int MLen() => Math.Abs(Dx) + Math.Abs(Dy) + Math.Abs(Dz);
@@ -33,14 +31,12 @@
     public class LMove
     {
         public CoordDiff Diff1;
-
         public CoordDiff Diff2;
     }
 
     public class Fission
     {
         public CoordDiff Diff;
-
         public int M;
     }
 
