@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System.Data.SqlTypes;
+using System.IO;
 using System.Numerics;
 using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
@@ -26,7 +27,7 @@ namespace Sample
             FileStream fs = new FileStream(path, FileMode.Open, FileAccess.Read);
             BinaryReader br = new BinaryReader(fs, new ASCIIEncoding());
 
-            R = br.ReadByte();
+            int R = br.ReadByte();
             Matrix = new int[R, R, R];
 
             int bytesCount = (int) Math.Ceiling((float)Matrix.Length / 8);
@@ -41,9 +42,10 @@ namespace Sample
                         int bitNumber = x * R * R + y * R + z;
 
                         int byteNumber = bitNumber / 8;
+
                         int shift = bitNumber % 8;
 
-                        int mask = 1 << (7 - shift);
+                        int mask = 1 << shift;
                         int curByte = bytes[byteNumber];
                         int curRes = curByte & mask;
 
@@ -52,13 +54,21 @@ namespace Sample
                 }
             }
 
-            for (int x = 0; x < R; ++x)
+            for (int y = 0; y < 7; ++y)
             {
-                for (int z = 0; z < R; ++z)
+                for (int x = 0; x < R; ++x)
                 {
-                    Console.Write(Matrix[x, 0, z]);
+                    for (int z = 0; z < R; ++z)
+                    {
+                        Console.Write(Matrix[x, y, z]);
+                    }
+
+                    Console.WriteLine();
                 }
+
                 Console.WriteLine();
+                Console.WriteLine();
+
             }
         }
 
