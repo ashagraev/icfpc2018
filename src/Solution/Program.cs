@@ -7,8 +7,7 @@
     {
         private static void Main(string[] args)
         {
-            var state = new TState();
-            state.Load("problems/LA186_tgt.mdl");
+            var state = TState.LoadFromFile("problems/LA130_tgt.mdl");
 
             TCommands commands = TraceReader.Read("traces/LA186.nbt");
 
