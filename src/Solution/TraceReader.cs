@@ -2,6 +2,7 @@
 {
     using System;
     using System.Collections.Generic;
+    using System.Linq.Expressions;
 
     public class TraceReader
     {
@@ -69,7 +70,64 @@
                            };
             }
 
+            var lastThreeBits = firstByte & 0b0000_0111;
+            var diff = DecodeNear((firstByte & 0b1111_1000) >> 3);
+
+            if (lastThreeBits == 0b111)
+            {
+                commandSize = 1;
+                return new FusionP
+                {
+                    Diff = diff
+                };
+            }
+
+            if (lastThreeBits == 0b110)
+            {
+                commandSize = 1;
+                return new FusionS
+                {
+                    Diff = diff
+                };
+            }
+
+            if (lastThreeBits == 0b101)
+            {
+                commandSize = 2;
+                return new Fission
+                {
+                    Diff = diff,
+                    M = SecondByte(),
+                };
+            }
+
+            if (lastThreeBits == 0b011)
+            {
+                commandSize = 1;
+                return new Fill
+                {
+                    Diff = diff
+                };
+            }
+
             throw new Exception(string.Format("Unknown command start with {0}", firstByte));
+        }
+
+        private static CoordDiff DecodeNear(int nd)
+        {
+            var nums = new List<int>();
+            for (var i = 0; i < 3; i++)
+            {
+                var digit = nd % 3;
+                nums.Add(digit - 1);
+                nd = (nd - digit) / 3;
+            }
+            return new CoordDiff
+            {
+                Dx = nums[2],
+                Dy = nums[1],
+                Dz = nums[0],
+            };
         }
 
         private static CoordDiff ReadDiff(int axis, int delta, int correction)

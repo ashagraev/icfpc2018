@@ -1,5 +1,8 @@
 namespace Tests
 {
+    using System.Threading.Tasks.Sources;
+
+    using Microsoft.VisualStudio.TestPlatform.ObjectModel;
     using Microsoft.VisualStudio.TestTools.UnitTesting;
 
     using Solution;
@@ -65,6 +68,36 @@ namespace Tests
             Assert.AreEqual(0, lm2.Diff2.Dx);
             Assert.AreEqual(0, lm2.Diff2.Dy);
             Assert.AreEqual(2, lm2.Diff2.Dz);
+        }
+
+        [TestMethod]
+        public void TestNearCommands()
+        {
+            var commands = TraceReader.Read(new byte[]
+            {
+                0b00111111,
+                0b10011110,
+                0b01110101,
+                0b00000101,
+                0b01010011,
+            });
+            Assert.AreEqual(4, commands.Count);
+            var fp = commands[0] as FusionP;
+            Assert.AreEqual(-1, fp.Diff.Dx);
+            Assert.AreEqual(1, fp.Diff.Dy);
+            Assert.AreEqual(0, fp.Diff.Dz);
+            var fs = commands[1] as FusionS;
+            Assert.AreEqual(1, fs.Diff.Dx);
+            Assert.AreEqual(-1, fs.Diff.Dy);
+            Assert.AreEqual(0, fs.Diff.Dz);
+            var fss = commands[2] as Fission;
+            Assert.AreEqual(0, fss.Diff.Dx);
+            Assert.AreEqual(0, fss.Diff.Dy);
+            Assert.AreEqual(1, fss.Diff.Dz);
+            var fill = commands[3] as Fill;
+            Assert.AreEqual(0, fill.Diff.Dx);
+            Assert.AreEqual(-1, fill.Diff.Dy);
+            Assert.AreEqual(0, fill.Diff.Dz);
         }
     }
 }
