@@ -1,8 +1,9 @@
 ﻿using System;
 using System.IO;
 using System.Text;
+using Sample;
 
-namespace sample
+namespace Sample
 {
     enum EHarmonics
     {
@@ -61,6 +62,24 @@ namespace sample
                 var curRes = curByte & mask;
 
                 Matrix[x, y, z] = curRes > 0 ? 1 : 0;
+            }
+        }
+
+        void ApplyCommands()
+        {
+            foreach (object command in Commands)
+            {
+                switch (command)
+                {
+                    case Halt halt: continue;
+                    case Wait wait: continue;
+                    case Flip flip: continue;
+                    case StraightMove move: continue;
+                    case LMove lMove: continue;
+                    case Fission fission: continue;
+                    case Fill fill: continue;
+                    case Fusion fusion: continue;
+                }
             }
         }
     }
