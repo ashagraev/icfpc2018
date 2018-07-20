@@ -216,6 +216,16 @@
                 }
             }
 
+            if (Harmonics == EHarmonics.Low)
+            {
+                Energy += 3 * R * R * R;
+            } else if (Harmonics == EHarmonics.High)
+            {
+                Energy += 30 * R * R * R;
+            }
+
+            Energy += 20 * Bots.Count;
+
             commands.RemoveRange(0, botsCount);
         }
     }
