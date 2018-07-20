@@ -85,6 +85,18 @@
                     }
                 }
             }
+
+            TBot bot = new TBot();
+            bot.Bid = 1;
+            bot.Coord = new TCoord();
+            bot.Coord.X = 0;
+            bot.Coord.Y = 0;
+            bot.Coord.Z = 0;
+            bot.Seeds = new List<int>();
+            for (int i = 2; i <= 20; ++i)
+            {
+                bot.Seeds.Add(i);
+            }
         }
 
         private void ApplyCommands()
