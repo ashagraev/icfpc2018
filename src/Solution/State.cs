@@ -9,16 +9,13 @@
     internal enum EHarmonics
     {
         High,
-
         Low
     }
 
     internal struct TCoord
     {
         public int X;
-
         public int Y;
-
         public int Z;
 
         public void Apply(CoordDiff diff)
