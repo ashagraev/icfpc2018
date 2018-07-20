@@ -10,7 +10,13 @@ How to set up .NET Core:
 Windows: https://www.microsoft.com/net/learn/get-started/windows
 Linux: https://www.microsoft.com/net/learn/get-started/linux/ubuntu18-04
 
-Code-style: whatever. (Will commit solution-level ReSharper settings for automatic code format)
-
 Branches: <login>/<feature>
 Commits into master are fine
+
+Code-style
+----------
+1. Install ReSharper + "StyleCop ReSharper extension" (ReSharper -> Extension Manager -> StyleCop)
+2. Use "ReSharper -> Edit -> Cleanup Code" periodically (Ctrl + E, C)
+3. Use "ReSharper -> Edit -> Reformat code" (Ctrl + Alt + Entr) regulary
+4. Everything that is not touched by "code cleanup" and has no complains from "inspections" is fine
+
