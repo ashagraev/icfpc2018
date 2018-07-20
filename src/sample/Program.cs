@@ -53,25 +53,7 @@ namespace Sample
                     }
                 }
             }
-
-            for (int y = 0; y < 7; ++y)
-            {
-                for (int x = 0; x < R; ++x)
-                {
-                    for (int z = 0; z < R; ++z)
-                    {
-                        Console.Write(Matrix[x, y, z]);
-                    }
-
-                    Console.WriteLine();
-                }
-
-                Console.WriteLine();
-                Console.WriteLine();
-
-            }
         }
-
     }
 
     internal class Program
