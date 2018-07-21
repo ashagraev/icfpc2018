@@ -14,6 +14,16 @@
 
             DumpCubeStrategy strategy = new DumpCubeStrategy();
             List<ICommand> trace = strategy.MakeTrace(model);
+
+            TState state = new TState(model);
+            TCommandsReader reader = new TCommandsReader(trace);
+            while (!reader.AtEnd())
+            {
+                state.Step(reader);
+            }
+
+            Console.WriteLine(state.HasValidFinalState());
+
             File.WriteAllBytes("trace", TraceSerializer.Serialize(trace));
         }
     }

@@ -175,14 +175,6 @@ namespace Solution
                 }
 
                 current = next;
-
-                Console.Write(current.X);
-                Console.Write(" ");
-                Console.Write(current.Y);
-                Console.Write(" ");
-                Console.Write(current.Z);
-                Console.WriteLine();
-
                 ++iteration;
             }
 
