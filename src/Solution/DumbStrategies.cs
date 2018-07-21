@@ -6,7 +6,7 @@ namespace Solution
 {
     class AlexShBaseStrategy
     {
-        public static void AddTransition(TCommands commands, TCoord current, TCoord target)
+        public static void AddTransition(List<ICommand> commands, TCoord current, TCoord target)
         {
             int xDiff = target.X > current.X ? 1 : -1;
             int yDiff = target.Y > current.Y ? 1 : -1;
@@ -26,7 +26,7 @@ namespace Solution
                 lMove.Diff2.Dy = Math.Abs(current.Y - target.Y) > 0 ? yDiff : 0;
                 lMove.Diff2.Dz = Math.Abs(current.Z - target.Z) > 0 ? zDiff : 0;
 
-                commands.Commands.Add(lMove);
+                commands.Add(lMove);
 
                 current.X += lMove.Diff1.Dx + lMove.Diff2.Dx;
                 current.Y += lMove.Diff1.Dy + lMove.Diff2.Dy;
@@ -43,7 +43,7 @@ namespace Solution
                 sMove.Diff.Dy = Math.Abs(current.Y - target.Y) > 0 ? yDiff : 0;
                 sMove.Diff.Dz = Math.Abs(current.Z - target.Z) > 0 ? zDiff : 0;
 
-                commands.Commands.Add(sMove);
+                commands.Add(sMove);
 
                 current.X += sMove.Diff.Dx;
                 current.Y += sMove.Diff.Dy;
@@ -51,16 +51,16 @@ namespace Solution
             }
         }
 
-        public static TCommands MakeTrace(TState state)
+        public static List<ICommand> MakeTrace(TModel model)
         {
-            TCommands result = new TCommands();
+            List<ICommand> result = new List<ICommand>();
 
-            int minX = state.R;
-            int minZ = state.R;
+            int minX = model.R;
+            int minZ = model.R;
 
-            for (var x = 0; x < state.R; ++x)
-                for (var z = 0; z < state.R; ++z)
-                    if (state.TargetMatrix[x, 0, z] > 0)
+            for (var x = 0; x < model.R; ++x)
+                for (var z = 0; z < model.R; ++z)
+                    if (model[x, 0, z] > 0)
                     {
                         minX = Math.Min(minX, x);
                         minZ = Math.Min(minZ, z);

@@ -7,15 +7,16 @@
     {
         private static void Main(string[] args)
         {
-            var state = new TState();
-            state.Load("problems/LA001_tgt.mdl");
+            var model = new TModel("problems/LA001_tgt.mdl");
+            var state = new TState(model);
 
-            TCommands commands = AlexShBaseStrategy.MakeTrace(state);
+            List<ICommand> commands = AlexShBaseStrategy.MakeTrace(model);
+            TCommandsReader commandsReader = new TCommandsReader(commands);
 
             int step = 0;
-            while (!commands.AtEnd())
+            while (!commandsReader.AtEnd())
             {
-                state.ApplyCommands(commands);
+                state.Step(commandsReader);
                 step += 1;
 
                 if (step % 1000000 == 0)

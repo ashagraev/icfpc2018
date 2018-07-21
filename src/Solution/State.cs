@@ -111,6 +111,7 @@
         public TState(TModel model)
         {
             Model = model;
+            Matrix = new int[model.R, model.R, model.R];
 
             var bot = new TBot
             {
