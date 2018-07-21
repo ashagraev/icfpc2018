@@ -8,9 +8,9 @@
         private static void Main(string[] args)
         {
             var state = new TState();
-            state.Load("problems/LA186_tgt.mdl");
+            state.Load("problems/LA001_tgt.mdl");
 
-            TCommands commands = TraceReader.Read("traces/LA186.nbt");
+            TCommands commands = AlexShBaseStrategy.MakeTrace(state);
 
             int step = 0;
             while (!commands.AtEnd())

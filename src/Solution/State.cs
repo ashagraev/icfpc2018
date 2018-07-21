@@ -18,6 +18,9 @@
         public int Y;
         public int Z;
 
+        public int ALen() => Math.Min(Math.Min(Math.Abs(X), Math.Abs(Y)), Math.Abs(Z));
+        public int MLen() => Math.Abs(X) + Math.Abs(Y) + Math.Abs(Z);
+
         public void Apply(CoordDiff diff)
         {
             X += diff.Dx;
