@@ -1,6 +1,7 @@
 ﻿namespace Solution
 {
     using System;
+    using System.IO;
 
     using Solution.Strategies;
 
@@ -11,7 +12,7 @@
             var modelName = "LA001";
             var model = new TModel($"Data/Problems/{modelName}_tgt.mdl");
 
-            void TestStrategy(IStrategy strategy)
+            void TestStrategy(IStrategy strategy, bool saveTrace = false)
             {
                 var trace = strategy.MakeTrace(model);
                 var state = new TState(model);
@@ -24,10 +25,15 @@
                 Console.WriteLine($"=== {strategy.Name}");
                 Console.WriteLine(state.HasValidFinalState());
                 Console.WriteLine(state.Energy);
+
+                if (saveTrace)
+                {
+                    File.WriteAllBytes("trace", TraceSerializer.Serialize(trace));
+                }
             }
 
             TestStrategy(new DumpCubeStrategy());
-            TestStrategy(new BetterCubeStrategy());
+            TestStrategy(new BetterCubeStrategy(), true);
             TestStrategy(new TTraceReaderStrategy($"data/DefaultTraces"));
             TestStrategy(new BfsStrategy());
         }
