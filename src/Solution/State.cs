@@ -40,14 +40,16 @@
 
     internal struct TModel
     {
-        private readonly int[,,] TargetMatrix;
-
+        public readonly string Path;
         public readonly int R;
+
+        private readonly int[,,] TargetMatrix;
 
         public int this[int i, int j, int k] => TargetMatrix[i, j, k];
 
         public TModel(string path)
         {
+            Path = path;
             using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read))
             {
                 var br = new BinaryReader(fs, new ASCIIEncoding());
@@ -89,7 +91,7 @@
         private int Pos;
 
         public TCommandsReader(List<ICommand> commands) => Commands = commands;
- 
+
         public bool AtEnd() => Pos >= Commands.Count;
 
         public void Advance(int count) => Pos += count;
@@ -111,7 +113,7 @@
         public TState(TModel model)
         {
             Model = model;
-            Matrix = new int[model.R, model.R, model.R];
+            Matrix = new int[Model.R, Model.R, Model.R];
 
             var bot = new TBot
             {

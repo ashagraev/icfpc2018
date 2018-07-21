@@ -3,12 +3,19 @@
     using System;
     using System.Collections.Generic;
 
+    using Solution.Strategies;
+
     internal class Program
     {
         private static void Main(string[] args)
         {
-            var model = new TModel("problems/LA001_tgt.mdl");
-            var state = new TState(model);
+            StrategyTester.Test(
+                "Data/Problems",
+                new[]
+                    {
+                       new TTraceReaderStrategy("Data/DefaultTraces") 
+                    }
+            );
 
             List<ICommand> commands = AlexShBaseStrategy.MakeTrace(model);
             TCommandsReader commandsReader = new TCommandsReader(commands);
