@@ -159,9 +159,14 @@ namespace Solution
             TCoord current = new TCoord();
             TDumpCubeTraverse dumpCureTraverse = new TDumpCubeTraverse(model);
 
-            TCoord next = dumpCureTraverse.Next();
-            while (!next.IsAtStart())
+            int iteration = 0;
+            while (iteration == 0 || !current.IsAtStart())
             {
+                TCoord next = dumpCureTraverse.Next();
+                StraightMove move = new StraightMove();
+                move.Diff = dumpCureTraverse.GetDirection();
+                result.Add(move);
+
                 if (model[current] > 0)
                 {
                     Fill fill = new Fill();
@@ -169,12 +174,16 @@ namespace Solution
                     result.Add(fill);
                 }
 
-                StraightMove move = new StraightMove();
-                move.Diff = dumpCureTraverse.GetDirection();
-                result.Add(move);
-
                 current = next;
-                next = dumpCureTraverse.Next();
+
+                Console.Write(current.X);
+                Console.Write(" ");
+                Console.Write(current.Y);
+                Console.Write(" ");
+                Console.Write(current.Z);
+                Console.WriteLine();
+
+                ++iteration;
             }
 
             result.Add(new Flip());
