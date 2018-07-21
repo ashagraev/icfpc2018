@@ -65,10 +65,12 @@
                 }
             }
 
+            var baselineStrategy = new TTraceReaderStrategy("Data/DefaultTraces");
+
             foreach (IStrategy s in strategies)
             {
                 Console.WriteLine(s.Name);
-                Console.WriteLine(strategyStats[s.Name]);
+                Console.WriteLine((float) strategyStats[s.Name] / strategyStats[baselineStrategy.Name]);
                 Console.WriteLine("");
             }
 
