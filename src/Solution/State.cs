@@ -241,7 +241,8 @@ namespace Solution
                         newBot.Coord = bot.Coord;
                         newBot.Coord.Apply(fission.Diff);
 
-                        Bots.Append(newBot);
+                        Bots.Add(newBot);
+                        SortBots();
                         Energy += 24;
 
                         break;
@@ -281,6 +282,11 @@ namespace Solution
             }
 
             commands.Advance(botsCount);
+        }
+
+        private void SortBots()
+        {
+            Bots.Sort((x, y) => x.Bid.CompareTo(y.Bid));
         }
     }
 }
