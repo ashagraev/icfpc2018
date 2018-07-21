@@ -15,6 +15,7 @@
                 .Where(
                     type =>
                         type.IsClass &&
+                        !type.IsAbstract &&
                         typeof(IStrategy).IsAssignableFrom(type) &&
                         type.GetCustomAttributes(typeof(BrokenStrategy), true).Length == 0)
                 .Select(CreateStrategy)

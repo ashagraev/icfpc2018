@@ -223,6 +223,7 @@ namespace Solution.Strategies
             }
 
             Current.Apply(Direction);
+
             return Current;
         }
     }
@@ -233,6 +234,8 @@ namespace Solution.Strategies
 
         public List<ICommand> MakeTrace(TModel model)
         {
+            TState state;
+
             EHarmonics curHarmonics = EHarmonics.Low;
 
             List<ICommand> result = new List<ICommand>();
@@ -259,11 +262,6 @@ namespace Solution.Strategies
                     Fill fill = new Fill();
                     fill.Diff.Dy = -1;
                     result.Add(fill);
-                }
-                else if (curHarmonics == EHarmonics.High)
-                {
-                    result.Add(new Flip());
-                    curHarmonics = EHarmonics.Low;
                 }
 
                 current = next;
