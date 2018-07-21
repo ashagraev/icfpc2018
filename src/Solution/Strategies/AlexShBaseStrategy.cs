@@ -180,6 +180,6 @@
             return result;
         }
 
-        public string Name => "AlexSh";
+        public string Name => nameof(AlexShBaseStrategy);
     }
 }

@@ -164,7 +164,7 @@ namespace Solution.Strategies
 
     public class DumpCubeStrategy : IStrategy
     {
-        public string Name => "DumpCube";
+        public string Name => nameof(DumpCubeStrategy);
 
         public List<ICommand> MakeTrace(TModel model)
         {
