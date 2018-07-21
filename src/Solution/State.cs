@@ -12,8 +12,23 @@ namespace Solution
         Low
     }
 
-    public struct TCoord
+    public struct TCoord : IEquatable<TCoord>
     {
+        public bool Equals(TCoord other) => X == other.X && Y == other.Y && Z == other.Z;
+
+        public override bool Equals(object obj) => Equals((TCoord)obj);
+
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                var hashCode = X;
+                hashCode = (hashCode * 397) ^ Y;
+                hashCode = (hashCode * 397) ^ Z;
+                return hashCode;
+            }
+        }
+
         public int X;
         public int Y;
         public int Z;
@@ -185,6 +200,8 @@ namespace Solution
             Energy += 20 * Bots.Count;
 
             var botsCount = Bots.Count;
+            var fusionPrimaries = new Dictionary<int, CoordDiff>();
+            var fusionSecondaries = new Dictionary<int, CoordDiff>();
             for (var botIdx = 0; botIdx < botsCount; ++botIdx)
             {
                 var command = commands.GetCommand(botIdx);
@@ -242,7 +259,6 @@ namespace Solution
                         newBot.Coord.Apply(fission.Diff);
 
                         Bots.Add(newBot);
-                        SortBots();
                         Energy += 24;
 
                         break;
@@ -268,20 +284,69 @@ namespace Solution
 
                     case FusionP fusionP:
                     {
-                        throw new NotImplementedException("FusionP is not implemented yet!");
+                        fusionPrimaries.Add(botIdx, fusionP.Diff);
+                        break;
                     }
 
                     case FusionS fusionS:
                     {
-                        throw new NotImplementedException("FusionS is not implemented yet!");
-                        
+                        fusionSecondaries.Add(botIdx, fusionS.Diff);
+                        break;
                     }
 
-                    default: throw new InvalidOperationException("unknown item type");
+                    default: throw new InvalidOperationException($"unknown item type {command}");
                 }
             }
 
+            if (fusionPrimaries.Count > 0)
+            {
+                Fuse(fusionPrimaries, fusionSecondaries);
+            }
+            SortBots();
+
             commands.Advance(botsCount);
+        }
+
+        private void Fuse(Dictionary<int, CoordDiff> fusionPrimaries, Dictionary<int, CoordDiff> fusionSecondaries)
+        {
+            if (fusionPrimaries.Count != fusionSecondaries.Count)
+            {
+                throw new InvalidOperationException($"Fusion count mismatch: {fusionPrimaries.Count} primaries, {fusionSecondaries.Count} secondaries");
+            }
+
+            foreach (var (primaryIdx, ndP) in fusionPrimaries)
+            {
+                var primaryCoord = Bots[primaryIdx].Coord;
+                var secondaryCoord = primaryCoord;
+                secondaryCoord.Apply(ndP);
+
+                foreach (var (secondaryIdx, ndS) in fusionSecondaries)
+                {
+                    var sec = Bots[secondaryIdx];
+                    if (sec.Coord.Equals(secondaryCoord))
+                    {
+                        var sanityCheckCoord = sec.Coord;
+                        sanityCheckCoord.Apply(ndS);
+                        if (!sanityCheckCoord.Equals(primaryCoord))
+                        {
+                            throw new InvalidOperationException($"Fusion coord mismatch: {sanityCheckCoord} vs. {primaryCoord}");
+                        }
+
+                        var prim = Bots[primaryIdx];
+                        prim.Seeds.Add(sec.Bid);
+                        prim.Seeds.AddRange(sec.Seeds);
+                        prim.Seeds.Sort();
+
+                        Bots[secondaryIdx] = null;
+
+                        Energy -= 24;
+
+                        break;
+                    }
+                }
+            }
+
+            Bots = Bots.Where(x => x != null).ToList();
         }
 
         private void SortBots()
