@@ -75,7 +75,7 @@ namespace Solution
         public TModel(string path)
         {
             Name = Path.GetFileNameWithoutExtension(path);
-            if (Name.EndsWith("_tgt"))
+            if (Name.EndsWith("_tgt") || Name.EndsWith("_src"))
             {
                 Name = Name.Remove(Name.Length - 4);
             }
@@ -154,7 +154,7 @@ namespace Solution
                     Z = 0
                 }
             };
-            for (var i = 2; i <= 20; ++i)
+            for (var i = 2; i <= 40; ++i)
             {
                 bot.Seeds.Add(i);
             }

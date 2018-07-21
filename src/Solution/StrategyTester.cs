@@ -20,6 +20,15 @@
             var models = LoadModels(modelsDirectory);
             foreach (var model in models)
             {
+                var traceFile = $"{bestStrategiesDirectory}/{model.Name}.nbt";
+
+                if (!Path.GetFileName(model.Name).StartsWith("FA"))
+                {
+                    // TODO: remove this stupid hack when our strategies are able to destroy/reassemble models.
+                    File.Copy($"Data/DefaultTraces/{Path.GetFileName(traceFile)}", traceFile, true);
+                    continue;
+                }
+                
                 Console.WriteLine($"{model.Name}");
                 var (best, _) = RunStrategy(model, bestStrategy);
 
@@ -30,7 +39,6 @@
                     {
                         Console.WriteLine("  NEW BEST!!!");
                         best = energy;
-                        var traceFile = $"{bestStrategiesDirectory}/{model.Name}.nbt";
 
                         File.Delete(traceFile);
                         File.Delete($"{traceFile}.tmp");
