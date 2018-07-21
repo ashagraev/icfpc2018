@@ -147,6 +147,43 @@ namespace Solution
         }
     }
 
+    public class DumpCubeStrategy : IStrategy
+    {
+        public string Name => "DumpCube";
+
+        public List<ICommand> MakeTrace(TModel model)
+        {
+            List<ICommand> result = new List<ICommand>();
+            result.Add(new Flip());
+
+            TCoord current = new TCoord();
+            TDumpCubeTraverse dumpCureTraverse = new TDumpCubeTraverse(model);
+
+            TCoord next = dumpCureTraverse.Next();
+            while (!next.IsAtStart())
+            {
+                if (model[current] > 0)
+                {
+                    Fill fill = new Fill();
+                    fill.Diff = dumpCureTraverse.FillPreviousDirection();
+                    result.Add(fill);
+                }
+
+                StraightMove move = new StraightMove();
+                move.Diff = dumpCureTraverse.GetDirection();
+                result.Add(move);
+
+                current = next;
+                next = dumpCureTraverse.Next();
+            }
+
+            result.Add(new Flip());
+            result.Add(new Halt());
+
+            return result;
+        }
+    }
+
     public class AlexShBaseStrategy : IStrategy
     {
         public static void AddTransition(List<ICommand> commands, TCoord current, TCoord target, TModel model, bool doFill)

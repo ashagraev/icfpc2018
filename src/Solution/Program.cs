@@ -27,6 +27,10 @@
 
                 next = dumpCureTraverse.Next();
             }
+
+            DumpCubeStrategy strategy = new DumpCubeStrategy();
+            List<ICommand> trace = strategy.MakeTrace(model);
+            File.WriteAllBytes("trace", TraceSerializer.Serialize(trace));
         }
     }
 }
