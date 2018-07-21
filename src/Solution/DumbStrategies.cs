@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Solution
 {
-    class AlexShBaseStrategy
+    class AlexShBaseStrategy : IStrategy
     {
         public static void AddTransition(List<ICommand> commands, TCoord current, TCoord target, TModel model, bool doFill)
         {
@@ -114,7 +114,7 @@ namespace Solution
             return current;
         }
 
-    public static List<ICommand> MakeTrace(TModel model)
+        public List<ICommand> MakeTrace(TModel model)
         {
             List<ICommand> result = new List<ICommand>();
 
@@ -179,5 +179,7 @@ namespace Solution
 
             return result;
         }
+
+        public string Name => "AlexSh";
     }
 }
