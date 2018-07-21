@@ -116,7 +116,7 @@
                 {
                     foreach (var bs in bss)
                     {
-                        bs.Fill();
+                        bs.Fill(midY);
                     }
                 });
 
@@ -193,6 +193,8 @@
                 Z = z;
             }
 
+            public override string ToString() => $"<{X}, {Y}, {Z}>";
+
             public int DistTo(Coord other)
             {
                 return new CoordDiff
@@ -266,7 +268,7 @@
                 }
             }
 
-            public void Fill()
+            public void Fill(int midY)
             {
                 if (Halt)
                 {
@@ -294,14 +296,20 @@
                 YToVoxels.TryGetValue(Position.Y - 1, out voxelsToFill);
                 if (voxelsToFill == null || voxelsToFill.Count == 0)
                 {
-                    if (Position.Y + (TopMost ? 0 : 1) > YToVoxels.Keys.Max())
+                    var nextY = Position.Y + 1;
+                    var shouldStop = !TopMost && nextY >= midY;
+                    if (YToVoxels.Count > 0)
+                    {
+                        shouldStop |= nextY > YToVoxels.Keys.Max() + 1;
+                    }
+                    if (shouldStop)
                     {
                         CurrentCommand = null;
                         Halt = true;
                     }
                     else
                     {
-                        Move(Position.X, Position.Y + 1, Position.Z);
+                        Move(Position.X, nextY, Position.Z);
                     }
                     return;
                 }
@@ -325,12 +333,6 @@
 
             public void Finalize(TModel model, Range rangeZ)
             {
-                if (Position.X == 0 && Position.Z == 0)
-                {
-                    CurrentCommand = null;
-                    return;
-                }
-
                 if (model[Position.X + 1, Position.Y, Position.Z] > 0)
                 {
                     var toFill = new Coord(Position.X + 1, Position.Y, Position.Z);

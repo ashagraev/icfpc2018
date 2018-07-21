@@ -1,1 +1,1 @@
-Strategy: BetterCubeStrategy
+Strategy: StupidFissionFusionStategy
