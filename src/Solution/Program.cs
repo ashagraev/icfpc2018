@@ -1,5 +1,6 @@
 ﻿namespace Solution
 {
+    using System;
     using System.Collections.Generic;
     using System.IO;
 
@@ -11,9 +12,21 @@
         {
             TModel model = new TModel("problems/LA001_tgt.mdl");
 
-            AlexShBaseStrategy strategy = new AlexShBaseStrategy();
-            List<ICommand> trace = strategy.MakeTrace(model);
-            File.WriteAllBytes("trace", TraceSerializer.Serialize(trace));
+            TDumpCubeTraverse dumpCureTraverse = new TDumpCubeTraverse(model);
+
+            TCoord start = new TCoord();
+            TCoord next = dumpCureTraverse.Next();
+            while (!next.IsAtStart())
+            {
+                Console.Write(next.X);
+                Console.Write(" ");
+                Console.Write(next.Y);
+                Console.Write(" ");
+                Console.Write(next.Z);
+                Console.WriteLine();
+
+                next = dumpCureTraverse.Next();
+            }
         }
     }
 }
