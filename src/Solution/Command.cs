@@ -10,6 +10,13 @@
         public int Dy;
         public int Dz;
 
+        public CoordDiff(int dx, int dy, int dz)
+        {
+            Dx = dx;
+            Dy = dy;
+            Dz = dz;
+        }
+
         public int CLen() => new[] { Dx, Dy, Dz }.Select(Math.Abs).Max();
         public int MLen() => Math.Abs(Dx) + Math.Abs(Dy) + Math.Abs(Dz);
 

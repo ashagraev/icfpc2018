@@ -1,4 +1,4 @@
-﻿namespace Solution
+namespace Solution
 {
     using System;
     using System.Collections.Generic;
@@ -17,6 +17,13 @@
         public int X;
         public int Y;
         public int Z;
+
+        public TCoord(int x, int y, int z)
+        {
+            X = x;
+            Y = y;
+            Z = z;
+        }
 
         public int ALen() => Math.Min(Math.Min(Math.Abs(X), Math.Abs(Y)), Math.Abs(Z));
 
