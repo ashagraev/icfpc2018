@@ -46,6 +46,7 @@
         private readonly int[,,] TargetMatrix;
 
         public int this[int i, int j, int k] => TargetMatrix[i, j, k];
+        public int this[TCoord coord] => TargetMatrix[coord.X, coord.Y, coord.Z];
 
         public TModel(string path)
         {
