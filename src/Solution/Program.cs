@@ -1,6 +1,7 @@
 ﻿namespace Solution
 {
     using System;
+    using System.Collections.Generic;
     using System.IO;
 
     using Solution.Strategies;
@@ -9,33 +10,51 @@
     {
         private static void Main(string[] args)
         {
-            var modelName = "LA001";
-            var model = new TModel($"Data/Problems/{modelName}_tgt.mdl");
+            TModel model = new TModel("problems/LA001_tgt.mdl");
 
-            void TestStrategy(IStrategy strategy, bool saveTrace = false)
+            DumpCubeStrategy strategy = new DumpCubeStrategy();
+            List<ICommand> trace = strategy.MakeTrace(model);
+
+            BetterCubeStrategy betterStrategy = new BetterCubeStrategy();
+            List<ICommand> betterTrace = betterStrategy.MakeTrace(model);
+
+            List<ICommand> baselineTrace = TraceReader.Read("traces/LA001.nbt");
+
             {
-                var trace = strategy.MakeTrace(model);
-                var state = new TState(model);
-                var reader = new TCommandsReader(trace);
+                TState state = new TState(model);
+                TCommandsReader reader = new TCommandsReader(betterTrace);
                 while (!reader.AtEnd())
                 {
                     state.Step(reader);
                 }
 
-                Console.WriteLine($"=== {strategy.Name}");
                 Console.WriteLine(state.HasValidFinalState());
                 Console.WriteLine(state.Energy);
-
-                if (saveTrace)
+            }
+            {
+                TState state = new TState(model);
+                TCommandsReader reader = new TCommandsReader(trace);
+                while (!reader.AtEnd())
                 {
-                    File.WriteAllBytes("trace", TraceSerializer.Serialize(trace));
+                    state.Step(reader);
                 }
+
+                Console.WriteLine(state.HasValidFinalState());
+                Console.WriteLine(state.Energy);
+            }
+            {
+                TState state = new TState(model);
+                TCommandsReader reader = new TCommandsReader(baselineTrace);
+                while (!reader.AtEnd())
+                {
+                    state.Step(reader);
+                }
+
+                Console.WriteLine(state.HasValidFinalState());
+                Console.WriteLine(state.Energy);
             }
 
-            TestStrategy(new DumpCubeStrategy());
-            TestStrategy(new BetterCubeStrategy(), true);
-            TestStrategy(new TTraceReaderStrategy($"data/DefaultTraces"));
-            TestStrategy(new BfsStrategy());
+            File.WriteAllBytes("trace", TraceSerializer.Serialize(betterTrace));
         }
     }
 }

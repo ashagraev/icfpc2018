@@ -14,8 +14,6 @@
     {
         public static void Test(string modelsDirectory, string bestStrategiesDirectory, IEnumerable<IStrategy> strategiesEnum)
         {
-            var strategyStats = new Dictionary<String, long>();
-
             var strategies = strategiesEnum.ToArray();
             var bestStrategy = new TTraceReaderStrategy("Data/BestTraces");
 
@@ -28,19 +26,6 @@
                 foreach (var strategy in strategies)
                 {
                     var (energy, commands) = RunStrategy(model, strategy);
-
-                    if (energy != null)
-                    {
-                        if (strategyStats.ContainsKey(strategy.Name))
-                        {
-                            strategyStats[strategy.Name] += energy.Value;
-                        }
-                        else
-                        {
-                            strategyStats[strategy.Name] = energy.Value;
-                        }
-                    }
-
                     if ((energy != null) && ((best == null) || (energy < best)))
                     {
                         Console.WriteLine("  NEW BEST!!!");
@@ -63,16 +48,6 @@
                         }
                     }
                 }
-            }
-
-            var baselineStrategy = new TTraceReaderStrategy("Data/DefaultTraces");
-
-            foreach (IStrategy s in strategies)
-            {
-                Console.WriteLine(s.Name);
-                Console.WriteLine(strategyStats[s.Name]);
-                Console.WriteLine((float) strategyStats[s.Name] / strategyStats[baselineStrategy.Name]);
-                Console.WriteLine("");
             }
 
             MakeSubmission(bestStrategiesDirectory);
