@@ -14,8 +14,23 @@
 
             DumpCubeStrategy strategy = new DumpCubeStrategy();
             List<ICommand> trace = strategy.MakeTrace(model);
+
+            BetterCubeStrategy betterStrategy = new BetterCubeStrategy();
+            List<ICommand> betterTrace = betterStrategy.MakeTrace(model);
+
             List<ICommand> baselineTrace = TraceReader.Read("traces/LA001.nbt");
 
+            {
+                TState state = new TState(model);
+                TCommandsReader reader = new TCommandsReader(betterTrace);
+                while (!reader.AtEnd())
+                {
+                    state.Step(reader);
+                }
+
+                Console.WriteLine(state.HasValidFinalState());
+                Console.WriteLine(state.Energy);
+            }
             {
                 TState state = new TState(model);
                 TCommandsReader reader = new TCommandsReader(trace);
