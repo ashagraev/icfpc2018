@@ -12,6 +12,11 @@
             this.tracesDir = tracesDir;
         }
 
+        public TTraceReaderStrategy()
+            : this("Data/DefaultTraces")
+        {
+        }
+
         public string Name => "Traces:" + Path.GetFileName(tracesDir);
 
         List<ICommand> IStrategy.MakeTrace(TModel model)

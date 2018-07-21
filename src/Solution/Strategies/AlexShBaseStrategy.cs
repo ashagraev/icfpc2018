@@ -3,6 +3,7 @@
     using System;
     using System.Collections.Generic;
 
+    [BrokenStrategy]
     public class AlexShBaseStrategy : IStrategy
     {
         public static void AddTransition(List<ICommand> commands, TCoord current, TCoord target, TModel model, bool doFill)
