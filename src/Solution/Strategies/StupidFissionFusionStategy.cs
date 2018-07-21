@@ -112,6 +112,7 @@
                     bss[2].Move(midX + 1, 0, 0);
                 });
 
+            bss[1].TopMost = true;
             Move(
                 () =>
                 {
@@ -138,6 +139,21 @@
             MoveOneBot(2, rangeX.Max - 1, bss[2].Position.Y, rangeZ.Max);
 
             Move(() => bss[2].Finalize(model, rangeZ));
+
+            MoveOneBot(2, 0, 2, 0);
+
+            result.Add(new FusionP {Diff = new CoordDiff(0, 1, 0)});
+            result.Add(new FusionS {Diff = new CoordDiff(0, -1, 0)});
+            result.Add(new Wait());
+
+            result.Add(new Wait());
+            result.Add(new StraightMove { Diff = new CoordDiff(0, -1, 0) });
+
+            result.Add(new FusionP {Diff = new CoordDiff(0, 1, 0)});
+            result.Add(new FusionS {Diff = new CoordDiff(0, -1, 0)});
+
+            result.Add(new Flip());
+            result.Add(new Halt());
 
             return result;
         }
@@ -215,6 +231,7 @@
             public bool Halt;
             public int FinalDirection = -1;
             public HashSet<Coord> FinalCoords = new HashSet<Coord>();
+            public bool TopMost;
 
             public void Move(int tgtX, int tgtY, int tgtZ)
             {
@@ -279,7 +296,7 @@
                 YToVoxels.TryGetValue(Position.Y - 1, out voxelsToFill);
                 if (voxelsToFill == null || voxelsToFill.Count == 0)
                 {
-                    if (Position.Y + 1 > YToVoxels.Keys.Max())
+                    if (Position.Y + (TopMost ? 0 : 1) > YToVoxels.Keys.Max())
                     {
                         CurrentCommand = null;
                         Halt = true;
