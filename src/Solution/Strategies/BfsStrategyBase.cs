@@ -3,6 +3,7 @@
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Net.Sockets;
 
     public abstract class BfsStrategyBase : IStrategy
     {
@@ -19,20 +20,22 @@
             private class Bot
             {
                 public int Id;
-                private TCoord Coord;
+                public List<int> Seeds;
+                public TCoord Coord;
 
                 // Targets
                 public TCoord? FusionTarget;
                 public TCoord? FillTarget;
 
+                public TCoord? Target => FillTarget ?? FusionTarget;
+
                 // a trace to some cell near target
                 public List<ICommand> MoveCommands;
                 public int NextCommand = 0;
-
-                public bool HasTarget => (FusionTarget != null) && (FillTarget != null);
             }
 
             private readonly TModel model;
+            private int maxBots;
             private TState state;
             private List<Bot> bots;
             private readonly int numFilled = 0;
@@ -42,11 +45,28 @@
             public Impl(TModel model, int maxBots)
             {
                 this.model = model;
+                this.maxBots = maxBots;
                 state = new TState(this.model);
 
+                bots = new List<Bot>
+                {
+                    new Bot
+                    {
+                        Id = 1,
+                        Coord = new TCoord(0, 0, 0),
+                        Seeds = new List<int>()
+                    }
+                };
+                Console.WriteLine(bots.Count);
+                for (var i = 2; i <= 20; ++i)
+                {
+                    bots[0].Seeds.Add(i);
+                }
+
+                availablePositions = new HashSet<TCoord>();
                 for (var x = 0; x < model.R; ++x)
                 {
-                    for (var z = 0; x < model.R; ++z)
+                    for (var z = 0; z < model.R; ++z)
                     {
                         if (model[x, 0, z] == 1)
                         {
@@ -70,12 +90,12 @@
 
                     foreach (var bot in bots)
                     {
-                        if (!bot.HasTarget || !CanMove(bot, interferedCells))
+                        if (bot.Target == null || !CanMove(bot, interferedCells))
                         {
                             ChooseNewTarget(bot, ref interferedCells);
                         }
 
-                        if (bot.HasTarget && CanMove(bot, interferedCells))
+                        if (bot.Target != null && CanMove(bot, interferedCells))
                         {
                             idle = false;
                             yield return MoveBot(bot, ref interferedCells, ref newBots);
@@ -110,12 +130,21 @@
             private bool CanMove(Bot bot, HashSet<TCoord> interferedCells)
             {
                 return false;
+                if (bot.NextCommand < bot.MoveCommands.Count)
+                {
+                    switch (bot.MoveCommands[bot.NextCommand])
+                    {
+                        case StraightMove m:
+                            break;
+                        case LMove m:
+                            break;
+                        default:
+                            throw new Exception("WTF");
+                    }
+                }
             }
 
-            private ICommand MoveBot(Bot bot, ref HashSet<TCoord> interferedCells, ref List<Bot> newBots)
-            {
-                return null;
-            }
+            private ICommand MoveBot(Bot bot, ref HashSet<TCoord> interferedCells, ref List<Bot> newBots) => null;
 
             private void ChooseNewTarget(Bot bot, ref HashSet<TCoord> interferedCells)
             {
