@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Solution
 {
-    class AlexShBaseStrategy : IStrategy
+    public class AlexShBaseStrategy : IStrategy
     {
         public static void AddTransition(List<ICommand> commands, TCoord current, TCoord target, TModel model, bool doFill)
         {

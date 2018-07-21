@@ -2,7 +2,7 @@
 {
     using System.Collections.Generic;
 
-    internal interface IStrategy
+    public interface IStrategy
     {
         string Name { get; }
         List<ICommand> MakeTrace(TModel model);

@@ -6,13 +6,13 @@
     using System.Linq;
     using System.Text;
 
-    internal enum EHarmonics
+    public enum EHarmonics
     {
         High,
         Low
     }
 
-    internal struct TCoord
+    public struct TCoord
     {
         public int X;
         public int Y;
@@ -31,14 +31,14 @@
         public bool IsAtStart() => (X == 0) && (Y == 0) && (Z == 0);
     }
 
-    internal class TBot
+    public class TBot
     {
         public int Bid;
         public TCoord Coord;
         public List<int> Seeds = new List<int>();
     }
 
-    internal struct TModel
+    public struct TModel
     {
         public readonly string Path;
         public readonly int R;
@@ -99,7 +99,7 @@
         public ICommand GetCommand(int idx) => Commands[Pos + idx];
     }
 
-    internal class TState
+    public class TState
     {
         public TModel Model;
 
@@ -253,12 +253,12 @@
 
                     case FusionP fusionP:
                     {
-                        break;
+                        throw new NotImplementedException("FusionP is not implemented yet!");
                     }
 
                     case FusionS fusionS:
                     {
-                        break;
+                        throw new NotImplementedException("FusionS is not implemented yet!"); ;
                     }
 
                     default: throw new InvalidOperationException("unknown item type");

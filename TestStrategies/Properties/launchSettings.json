@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "TestStrategies": {
+      "commandName": "Project",
+      "workingDirectory": "$(SolutionDir)"
+    }
+  }
+}

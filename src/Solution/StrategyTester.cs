@@ -5,7 +5,7 @@
     using System.IO;
     using System.Linq;
 
-    internal static class StrategyTester
+    public static class StrategyTester
     {
         public static void Test(string modelsDirectory, IEnumerable<IStrategy> strategiesEum)
         {
