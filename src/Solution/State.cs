@@ -18,6 +18,13 @@
         public int Y;
         public int Z;
 
+        public TCoord(int x, int y, int z)
+        {
+            X = x;
+            Y = y;
+            Z = z;
+        }
+
         public int ALen() => Math.Min(Math.Min(Math.Abs(X), Math.Abs(Y)), Math.Abs(Z));
 
         public int MLen() => Math.Abs(X) + Math.Abs(Y) + Math.Abs(Z);
@@ -44,6 +51,8 @@
         public readonly string Name;
         public readonly int R;
 
+        public readonly int NumFilled;
+
         private readonly int[,,] targetMatrix;
 
         public int this[int i, int j, int k] => targetMatrix[i, j, k];
@@ -57,6 +66,8 @@
             {
                 Name = Name.Remove(Name.Length - 4);
             }
+
+            NumFilled = 0;
 
             using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read))
             {
@@ -84,8 +95,10 @@
                             var mask = 1 << shift;
                             int curByte = bytes[byteNumber];
                             var curRes = curByte & mask;
+                            var target = curRes > 0 ? 1 : 0;
 
-                            targetMatrix[x, y, z] = curRes > 0 ? 1 : 0;
+                            targetMatrix[x, y, z] = target;
+                            NumFilled += target;
                         }
                     }
                 }
