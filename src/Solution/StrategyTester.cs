@@ -49,7 +49,7 @@
         {
             foreach (var file in Directory.EnumerateFiles(modelsDirectory))
             {
-                if (Path.GetExtension(file) == "mdl")
+                if (Path.GetExtension(file) == ".mdl")
                 {
                     yield return new TModel(file);
                 }
