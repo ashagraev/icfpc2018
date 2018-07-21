@@ -3,6 +3,7 @@
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Runtime.CompilerServices;
 
     public struct CoordDiff
     {
@@ -63,6 +64,16 @@
         public int M;
 
         public override string ToString() => string.Format("Fission(d={0}, m={1})", Diff, M);
+
+        public Fission()
+        {
+        }
+
+        public Fission(int dx, int dy, int dz, int m)
+        {
+            Diff = new CoordDiff(dx, dy, dz);
+            M = m;
+        }
     }
 
     public class Fill : ICommand
@@ -70,6 +81,15 @@
         public CoordDiff Diff;
 
         public override string ToString() => string.Format("Fill(d={0})", Diff);
+
+        public Fill()
+        {
+        }
+
+        public Fill(int dx, int dy, int dz)
+        {
+            Diff = new CoordDiff(dx, dy, dz);
+        }
     }
 
     public class FusionP : ICommand
