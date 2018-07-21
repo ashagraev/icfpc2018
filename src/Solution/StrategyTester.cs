@@ -20,7 +20,6 @@
             var models = LoadModels(modelsDirectory);
             foreach (var model in models)
             {
-
                 Console.WriteLine($"{model.Name}");
                 var (best, _) = RunStrategy(model, bestStrategy);
 
@@ -42,24 +41,16 @@
                         }
 
                         File.Move($"{traceFile}.tmp", traceFile);
+
+                        using (var f = File.OpenWrite($"{traceFile}.winner.txt"))
+                        {
+                            f.Write(Encoding.UTF8.GetBytes($"Strategy: {strategy.Name}"));
+                        }
                     }
                 }
             }
 
-            ZipFile.CreateFromDirectory(bestStrategiesDirectory, "submission.zip");
-
-            var sha256 = SHA256.Create();
-            byte[] hash = null;
-            using (var f = File.OpenRead("submission.zip"))
-            {
-                hash = sha256.ComputeHash(f);
-            }
-
-            using (var f = File.OpenWrite("submission.sha256.txt"))
-            {
-                var hex = BitConverter.ToString(hash).Replace("-", "");
-                f.Write(Encoding.UTF8.GetBytes(hex));
-            }
+            MakeSubmission(bestStrategiesDirectory);
         }
 
         private static IEnumerable<TModel> LoadModels(string modelsDirectory)
@@ -110,6 +101,24 @@
             {
                 Console.WriteLine($"exception: {e}");
                 return (null, null);
+            }
+        }
+
+        private static void MakeSubmission(string bestStrategiesDirectory)
+        {
+            ZipFile.CreateFromDirectory(bestStrategiesDirectory, "submission.zip");
+
+            var sha256 = SHA256.Create();
+            byte[] hash = null;
+            using (var f = File.OpenRead("submission.zip"))
+            {
+                hash = sha256.ComputeHash(f);
+            }
+
+            using (var f = File.OpenWrite("submission.sha256.txt"))
+            {
+                var hex = BitConverter.ToString(hash).Replace("-", string.Empty);
+                f.Write(Encoding.UTF8.GetBytes(hex));
             }
         }
     }
