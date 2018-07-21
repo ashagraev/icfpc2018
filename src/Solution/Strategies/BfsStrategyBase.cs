@@ -4,6 +4,7 @@
     using System.Collections.Generic;
     using System.Linq;
 
+    [BrokenStrategy]
     public abstract class BfsStrategyBase : IStrategy
     {
         public string Name => nameof(BfsStrategyBase);
