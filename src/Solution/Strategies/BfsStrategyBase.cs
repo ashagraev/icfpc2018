@@ -216,7 +216,7 @@
                 bot.MoveCommands = null;
                 bot.NextCommand = 0;
 
-                if (bots.Count + (newBots?.Count ?? 0) < maxBots)
+                if (false && bots.Count + (newBots?.Count ?? 0) < maxBots)
                 {
                     foreach (var coord in bot.Coord.NearNeighbours())
                     {
@@ -265,7 +265,7 @@
 
             double CalcRank(TCoord coord)
             {
-                throw new NotImplementedException();;
+                return 1;
             }
 
             (List<ICommand> Path, int Cost) FindPath(TCoord coord)
