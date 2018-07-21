@@ -37,6 +37,16 @@
         }
 
         public bool IsAtStart() => (X == 0) && (Y == 0) && (Z == 0);
+
+        public IEnumerable<TCoord> NearNeighbours()
+        {
+            throw new NotImplementedException();
+        }
+
+        public IEnumerable<TCoord> ManhattenNeighbours()
+        {
+            throw new NotImplementedException();
+        }
     }
 
     public class TBot
