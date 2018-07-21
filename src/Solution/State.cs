@@ -52,6 +52,16 @@ namespace Solution
         }
 
         public bool IsAtStart() => (X == 0) && (Y == 0) && (Z == 0);
+
+        public IEnumerable<TCoord> NearNeighbours()
+        {
+            throw new NotImplementedException();
+        }
+
+        public IEnumerable<TCoord> ManhattenNeighbours()
+        {
+            throw new NotImplementedException();
+        }
     }
 
     public class TBot
@@ -65,6 +75,7 @@ namespace Solution
     {
         public readonly string Name;
         public readonly int R;
+        public readonly int NumFilled;
 
         private readonly int[,,] targetMatrix;
 
@@ -85,6 +96,7 @@ namespace Solution
                 var br = new BinaryReader(fs, new ASCIIEncoding());
 
                 R = br.ReadByte();
+                NumFilled = 0;
 
                 targetMatrix = new int[R, R, R];
 
@@ -107,7 +119,9 @@ namespace Solution
                             int curByte = bytes[byteNumber];
                             var curRes = curByte & mask;
 
-                            targetMatrix[x, y, z] = curRes > 0 ? 1 : 0;
+                            var target = curRes > 0 ? 1 : 0;
+                            targetMatrix[x, y, z] = target;
+                            NumFilled += target;
                         }
                     }
                 }
