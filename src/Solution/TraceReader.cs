@@ -3,32 +3,26 @@
     using System;
     using System.Collections.Generic;
     using System.IO;
-    using System.Linq.Expressions;
-    using System.Text;
 
     public class TraceReader
     {
-        public static TCommands Read(byte[] bytes)
+        public static List<ICommand> Read(byte[] bytes)
         {
-            TCommands result = new TCommands();
+            var result = new List<ICommand>();
             var startIndex = 0;
             while (startIndex < bytes.Length)
             {
-                int commandSize;
-                var command = ReadOneCommand(bytes, startIndex, out commandSize);
+                var command = ReadOneCommand(bytes, startIndex, out var commandSize);
                 startIndex += commandSize;
-                result.Commands.Add(command);
+                result.Add(command);
             }
 
             return result;
         }
 
-        public static TCommands Read(string path)
-        {
-            return Read(File.ReadAllBytes(path));
-        }
+        public static List<ICommand> Read(string path) => Read(File.ReadAllBytes(path));
 
-        public static object ReadOneCommand(byte[] bytes, int startIndex, out int commandSize)
+        public static ICommand ReadOneCommand(byte[] bytes, int startIndex, out int commandSize)
         {
             var firstByte = bytes[startIndex];
             if (firstByte == 0b1111_1111)
@@ -58,9 +52,9 @@
                 var delta = SecondByte() & 0b000_11111;
                 commandSize = 2;
                 return new StraightMove
-                           {
-                               Diff = ReadDiff(axis, delta, 15)
-                           };
+                {
+                    Diff = ReadDiff(axis, delta, 15)
+                };
             }
 
             if (lastFourBits == 0b0000_1100)
@@ -71,10 +65,10 @@
                 var delta2 = (SecondByte() & 0b1111_0000) >> 4;
                 commandSize = 2;
                 return new LMove
-                           {
-                               Diff1 = ReadDiff(axis1, delta1, 5),
-                               Diff2 = ReadDiff(axis2, delta2, 5)
-                           };
+                {
+                    Diff1 = ReadDiff(axis1, delta1, 5),
+                    Diff2 = ReadDiff(axis2, delta2, 5)
+                };
             }
 
             var lastThreeBits = firstByte & 0b0000_0111;
@@ -104,7 +98,7 @@
                 return new Fission
                 {
                     Diff = diff,
-                    M = SecondByte(),
+                    M = SecondByte()
                 };
             }
 
@@ -129,11 +123,12 @@
                 nums.Add(digit - 1);
                 nd = (nd - digit) / 3;
             }
+
             return new CoordDiff
             {
                 Dx = nums[2],
                 Dy = nums[1],
-                Dz = nums[0],
+                Dz = nums[0]
             };
         }
 
@@ -141,11 +136,11 @@
         {
             var shift = delta - correction;
             return new CoordDiff
-                       {
-                           Dx = GetShiftForAxis(X_AXIS, axis, shift),
-                           Dy = GetShiftForAxis(Y_AXIS, axis, shift),
-                           Dz = GetShiftForAxis(Z_AXIS, axis, shift)
-                       };
+            {
+                Dx = GetShiftForAxis(X_AXIS, axis, shift),
+                Dy = GetShiftForAxis(Y_AXIS, axis, shift),
+                Dz = GetShiftForAxis(Z_AXIS, axis, shift)
+            };
         }
 
         private static int GetShiftForAxis(int neededAxis, int axis, int shift) => neededAxis == axis ? shift : 0;

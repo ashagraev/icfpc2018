@@ -38,27 +38,112 @@
         public List<int> Seeds = new List<int>();
     }
 
+    internal struct TModel
+    {
+        private readonly int[,,] TargetMatrix;
+
+        public readonly int R;
+
+        public int this[int i, int j, int k] => TargetMatrix[i, j, k];
+
+        public TModel(string path)
+        {
+            using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read))
+            {
+                var br = new BinaryReader(fs, new ASCIIEncoding());
+
+                R = br.ReadByte();
+
+                TargetMatrix = new int[R, R, R];
+
+                var bytesCount = (int)Math.Ceiling((float)TargetMatrix.Length / 8);
+                var bytes = br.ReadBytes(bytesCount);
+
+                for (var x = 0; x < R; ++x)
+                {
+                    for (var y = 0; y < R; ++y)
+                    {
+                        for (var z = 0; z < R; ++z)
+                        {
+                            var bitNumber = (x * R * R) + (y * R) + z;
+
+                            var byteNumber = bitNumber / 8;
+
+                            var shift = bitNumber % 8;
+
+                            var mask = 1 << shift;
+                            int curByte = bytes[byteNumber];
+                            var curRes = curByte & mask;
+
+                            TargetMatrix[x, y, z] = curRes > 0 ? 1 : 0;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    public class TCommandsReader
+    {
+        private readonly List<ICommand> Commands;
+        private int Pos;
+
+        public TCommandsReader(List<ICommand> commands) => Commands = commands;
+ 
+        public bool AtEnd() => Pos >= Commands.Count;
+
+        public void Advance(int count) => Pos += count;
+
+        public ICommand GetCommand(int idx) => Commands[Pos + idx];
+    }
+
     internal class TState
     {
+        public TModel Model;
+
         public List<TBot> Bots = new List<TBot>();
 
         public long Energy;
         public EHarmonics Harmonics = EHarmonics.Low;
 
         public int[,,] Matrix;
-        public int[,,] TargetMatrix;
 
-        public byte R;
+        public TState(TModel model)
+        {
+            Model = model;
+
+            var bot = new TBot
+            {
+                Bid = 1,
+                Coord =
+                {
+                    X = 0,
+                    Y = 0,
+                    Z = 0
+                }
+            };
+            for (var i = 2; i <= 20; ++i)
+            {
+                bot.Seeds.Add(i);
+            }
+
+            Bots.Add(bot);
+
+            Energy = 0;
+            Harmonics = EHarmonics.Low;
+        }
+
+        public static TState LoadFromFile(string path) => new TState(new TModel(path));
 
         public bool HasValidFinalState()
         {
-            for (var x = 0; x < R; ++x)
+            for (var x = 0; x < Model.R; ++x)
             {
-                for (var y = 0; y < R; ++y)
+                for (var y = 0; y < Model.R; ++y)
                 {
-                    for (var z = 0; z < R; ++z)
+                    for (var z = 0; z < Model.R; ++z)
                     {
-                        if (Matrix[x, y, z] != TargetMatrix[x, y, z])
+                        if (Matrix[x, y, z] != Model[x, y, z])
                         {
                             return false;
                         }
@@ -69,64 +154,15 @@
             return (Bots.Count == 1) && Bots[0].Coord.IsAtStart() && (Harmonics == EHarmonics.Low);
         }
 
-        public void Load(string path)
-        {
-            var fs = new FileStream(path, FileMode.Open, FileAccess.Read);
-            var br = new BinaryReader(fs, new ASCIIEncoding());
-
-            R = br.ReadByte();
-
-            TargetMatrix = new int[R, R, R];
-            Matrix = new int[R, R, R];
-
-            var bytesCount = (int)Math.Ceiling((float)TargetMatrix.Length / 8);
-            var bytes = br.ReadBytes(bytesCount);
-
-            for (var x = 0; x < R; ++x)
-            {
-                for (var y = 0; y < R; ++y)
-                {
-                    for (var z = 0; z < R; ++z)
-                    {
-                        var bitNumber = (x * R * R) + (y * R) + z;
-
-                        var byteNumber = bitNumber / 8;
-
-                        var shift = bitNumber % 8;
-
-                        var mask = 1 << shift;
-                        int curByte = bytes[byteNumber];
-                        var curRes = curByte & mask;
-
-                        TargetMatrix[x, y, z] = curRes > 0 ? 1 : 0;
-                    }
-                }
-            }
-
-            var bot = new TBot();
-            bot.Bid = 1;
-            bot.Coord.X = 0;
-            bot.Coord.Y = 0;
-            bot.Coord.Z = 0;
-            for (var i = 2; i <= 20; ++i)
-            {
-                bot.Seeds.Add(i);
-            }
-            Bots.Add(bot);
-
-            Energy = 0;
-            Harmonics = EHarmonics.Low;
-        }
-
-        public void ApplyCommands(TCommands commands)
+        public void Step(TCommandsReader commands)
         {
             if (Harmonics == EHarmonics.Low)
             {
-                Energy += 3 * R * R * R;
+                Energy += 3 * Model.R * Model.R * Model.R;
             }
             else if (Harmonics == EHarmonics.High)
             {
-                Energy += 30 * R * R * R;
+                Energy += 30 * Model.R * Model.R * Model.R;
             }
 
             Energy += 20 * Bots.Count;
@@ -176,8 +212,7 @@
                     {
                         bot.Seeds.Sort();
 
-                        var newBot = new TBot();
-                        newBot.Bid = bot.Seeds[0];
+                        var newBot = new TBot { Bid = bot.Seeds[0] };
 
                         for (var i = 1; i <= fission.M; ++i)
                         {
