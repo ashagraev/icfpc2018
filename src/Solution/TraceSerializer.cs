@@ -2,6 +2,7 @@
 {
     using System;
     using System.Collections.Generic;
+    using System.Linq.Expressions;
     using System.Runtime.InteropServices.WindowsRuntime;
 
     public class TraceSerializer
@@ -57,7 +58,7 @@
             var nonZeroSum = (diff.Dx != 0 ? 1 : 0) + (diff.Dy != 0 ? 1 : 0) + (diff.Dz != 0 ? 1 : 0);
             if (nonZeroSum != 1)
             {
-                throw new ArgumentOutOfRangeException(string.Format("Invalid diff: {0}", diff));
+                throw new ArgumentOutOfRangeException(string.Format("Exactly one non-zero component expected: {0}", diff));
             }
 
             int shift;
@@ -78,11 +79,22 @@
                 axis = Constants.ZAxis;
             }
 
+            if (Math.Abs(shift) > correction)
+            {
+                throw new ArgumentOutOfRangeException(string.Format("The diff component is too large: {0}", shift));
+            }
+
             return (axis, shift + correction);
         }
 
         private static int EncodeNearDiff(CoordDiff diff)
         {
+            var cl = diff.CLen();
+            var ml = diff.MLen();
+            if (cl != 1 || (ml <= 0 || ml > 2))
+            {
+                throw new ArgumentOutOfRangeException(string.Format("Invalid near diff: {0}", diff));
+            }
             return ((diff.Dx + 1) * 9 + (diff.Dy + 1) * 3 + (diff.Dz + 1)) << 3;
         }
     }

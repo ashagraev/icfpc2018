@@ -2,6 +2,7 @@
 {
     using System;
     using System.Collections.Generic;
+    using System.Linq;
 
     public struct CoordDiff
     {
@@ -9,6 +10,7 @@
         public int Dy;
         public int Dz;
 
+        public int CLen() => new[] { Dx, Dy, Dz }.Select(Math.Abs).Max();
         public int MLen() => Math.Abs(Dx) + Math.Abs(Dy) + Math.Abs(Dz);
 
         public override string ToString() => string.Format("<dx={0}, dy={1}, dz={2}>", Dx, Dy, Dz);
