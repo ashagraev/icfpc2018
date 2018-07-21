@@ -6,8 +6,18 @@ namespace Solution
 {
     class AlexShBaseStrategy
     {
-        public static void AddTransition(List<ICommand> commands, TCoord current, TCoord target)
+        public static void AddTransition(List<ICommand> commands, TCoord current, TCoord target, TModel model, bool doFill)
         {
+            Fill fill = new Fill();
+            fill.Diff.Dx = 0;
+            fill.Diff.Dy = 0;
+            fill.Diff.Dz = 0;
+
+            if (model[current.X, current.Y, current.Z] > 0 && doFill)
+            {
+                commands.Add(fill);
+            }
+
             int xDiff = target.X > current.X ? 1 : -1;
             int yDiff = target.Y > current.Y ? 1 : -1;
             int zDiff = target.Z > current.Z ? 1 : -1;
@@ -31,6 +41,11 @@ namespace Solution
                 current.X += lMove.Diff1.Dx + lMove.Diff2.Dx;
                 current.Y += lMove.Diff1.Dy + lMove.Diff2.Dy;
                 current.Z += lMove.Diff1.Dz + lMove.Diff2.Dz;
+
+                if (model[current.X, current.Y, current.Z] > 0 && doFill)
+                {
+                    commands.Add(fill);
+                }
             }
 
             while (Math.Abs(current.X - target.X) > 0 ||
@@ -48,34 +63,119 @@ namespace Solution
                 current.X += sMove.Diff.Dx;
                 current.Y += sMove.Diff.Dy;
                 current.Z += sMove.Diff.Dz;
+
+                if (model[current.X, current.Y, current.Z] > 0 && doFill)
+                {
+                    commands.Add(fill);
+                }
             }
         }
 
-        public static List<ICommand> MakeTrace(TModel model)
+        public static TCoord RectangleTraverse(List<ICommand> commands, int minX, int minZ, int maxX, int maxZ, int y, TModel model)
+        {
+            TCoord current;
+            current.X = minX;
+            current.Y = y;
+            current.Z = minZ;
+
+            while (current.X < maxX || current.Z < maxZ)
+            {
+                if (current.X < maxX)
+                {
+                    TCoord next = current;
+                    next.X = maxX;
+                    AddTransition(commands, current, next, model, true);
+                    current = next;
+                }
+                if (current.Z < maxZ)
+                {
+                    TCoord next1 = current;
+                    next1.Z += 1;
+
+                    TCoord next2 = next1;
+                    next2.X = minX;
+
+                    AddTransition(commands, current, next1, model, true);
+                    AddTransition(commands, next1, next2, model, true);
+
+                    current = next2;
+                }
+                if (current.Z < maxZ)
+                {
+                    TCoord next = current;
+                    next.Z += 1;
+
+                    AddTransition(commands, current, next, model, true);
+
+                    current = next;
+                }
+            }
+
+            return current;
+        }
+
+    public static List<ICommand> MakeTrace(TModel model)
         {
             List<ICommand> result = new List<ICommand>();
 
-            int minX = model.R;
-            int minZ = model.R;
-
+            int maxY = 0;
             for (var x = 0; x < model.R; ++x)
-                for (var z = 0; z < model.R; ++z)
-                    if (model[x, 0, z] > 0)
-                    {
-                        minX = Math.Min(minX, x);
-                        minZ = Math.Min(minZ, z);
-                    }
+                for (var y = 0; y < model.R; ++y)
+                    for (var z = 0; z < model.R; ++z)
+                        if (model[x, y, z] > 0)
+                            maxY = Math.Max(maxY, y);
 
-            TCoord target = new TCoord();
-            target.X = minX;
-            target.Z = minZ;
+            TCoord current;
+            current.X = 0;
+            current.Y = 0;
+            current.Z = 0;
 
-            TCoord start = new TCoord();
-            start = target;
-            start.X += 10;
-            start.Z = 0;
+            for (int y = 0; y <= maxY; ++y)
+            {
+                int minX = model.R;
+                int minZ = model.R;
 
-            AddTransition(result, start, target);
+                int maxX = 0;
+                int maxZ = 0;
+
+                for (var x = 0; x < model.R; ++x)
+                    for (var z = 0; z < model.R; ++z)
+                        if (model[x, y, z] > 0)
+                        {
+                            minX = Math.Min(minX, x);
+                            minZ = Math.Min(minZ, z);
+
+                            maxX = Math.Max(maxX, x);
+                            maxZ = Math.Max(maxZ, z);
+                        }
+
+                TCoord startPoint;
+                startPoint.X = minX;
+                startPoint.Y = y;
+                startPoint.Z = minZ;
+
+                AddTransition(result, current, startPoint, model, false);
+
+                current = RectangleTraverse(result, minX, minZ, maxX, maxZ, y, model);
+
+                TCoord next = current;
+                ++next.Y;
+                AddTransition(result, current, next, model, false);
+            }
+
+            {
+                TCoord next1 = current;
+                next1.X = 0;
+                next1.Z = 0;
+                AddTransition(result, current, next1, model, false);
+
+                TCoord next2 = next1;
+                next2.Y = 0;
+
+                AddTransition(result, next1, next2, model, false);
+            }
+
+            result.Add(new Halt());
 
             return result;
         }
