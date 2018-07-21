@@ -12,7 +12,7 @@
 
     public static class StrategyTester
     {
-        public static void Test(string modelsDirectory, string bestStrategiesDirectory, IEnumerable<IStrategy> strategiesEnum)
+        public static void Test(string modelsDirectory, string bestStrategiesDirectory, string defaultTracesDirectory, IEnumerable<IStrategy> strategiesEnum)
         {
             var strategies = strategiesEnum.ToArray();
             var bestStrategy = new TTraceReaderStrategy("Data/BestTraces");
@@ -25,10 +25,10 @@
                 if (!Path.GetFileName(model.Name).StartsWith("FA"))
                 {
                     // TODO: remove this stupid hack when our strategies are able to destroy/reassemble models.
-                    File.Copy($"Data/DefaultTraces/{Path.GetFileName(traceFile)}", traceFile, true);
+                    File.Copy($"{defaultTracesDirectory}/{Path.GetFileName(traceFile)}", traceFile, true);
                     continue;
                 }
-                
+
                 Console.WriteLine($"{model.Name}");
                 var (best, _) = RunStrategy(model, bestStrategy);
 
@@ -58,7 +58,7 @@
                 }
             }
 
-            MakeSubmission(bestStrategiesDirectory);
+            MakeSubmission(bestStrategiesDirectory, defaultTracesDirectory);
         }
 
         private static IEnumerable<TModel> LoadModels(string modelsDirectory)
@@ -112,10 +112,25 @@
             }
         }
 
-        private static void MakeSubmission(string bestStrategiesDirectory)
+        private static void MakeSubmission(string bestStrategiesDirectory, string defaultTracesDirectory)
         {
+            var submissionDirectory = "SubmissionContents";
+            if (Directory.Exists(submissionDirectory))
+            {
+                Directory.Delete(submissionDirectory, true);
+            }
+            Directory.CreateDirectory(submissionDirectory);
+
+            foreach (var trace in Directory.EnumerateFiles(defaultTracesDirectory))
+            {
+                var traceBaseName = Path.GetFileName(trace);
+                var ourBestTrace = $"{bestStrategiesDirectory}/{traceBaseName}";
+                File.Copy(ourBestTrace, $"{submissionDirectory}/{traceBaseName}");
+            }
+
             File.Delete("submission.zip");
-            ZipFile.CreateFromDirectory(bestStrategiesDirectory, "submission.zip");
+            ZipFile.CreateFromDirectory(submissionDirectory, "submission.zip");
+            Directory.Delete(submissionDirectory, true);
 
             var sha256 = SHA256.Create();
             byte[] hash = null;

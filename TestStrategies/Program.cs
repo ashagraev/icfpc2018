@@ -20,7 +20,7 @@
                 .Select(CreateStrategy)
                 .Where(strategy => strategy != null);
 
-            StrategyTester.Test("Data/Problems", "Data/BestTraces", strategies);
+            StrategyTester.Test("Data/Problems", "Data/BestTraces", "Data/DefaultTraces", strategies);
         }
 
         private static IStrategy CreateStrategy(Type type)
