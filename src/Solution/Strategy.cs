@@ -1,11 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace Solution
+﻿namespace Solution
 {
-    interface TStrategy
+    using System.Collections.Generic;
+
+    internal interface TStrategy
     {
-        TCommands MakeTrace(TModel model);
+        List<ICommand> MakeTrace(TModel model);
     }
 }

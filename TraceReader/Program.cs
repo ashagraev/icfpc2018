@@ -17,7 +17,7 @@ namespace TraceReaderTool
             }
             var bytes = File.ReadAllBytes(args[0]);
             var commands = TraceReader.Read(bytes);
-            foreach (var cmd in commands.Commands)
+            foreach (var cmd in commands)
             {
                 Console.WriteLine(cmd);
             }

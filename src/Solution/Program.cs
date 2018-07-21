@@ -1,7 +1,6 @@
 ﻿namespace Solution
 {
     using System;
-    using System.Collections.Generic;
 
     internal class Program
     {
@@ -9,12 +8,13 @@
         {
             var state = TState.LoadFromFile("problems/LA130_tgt.mdl");
 
-            TCommands commands = TraceReader.Read("traces/LA186.nbt");
+            var commands = TraceReader.Read("traces/LA186.nbt");
 
-            int step = 0;
-            while (!commands.AtEnd())
+            var step = 0;
+            var commandsReader = new TCommandsReader(commands);
+            while (!commandsReader.AtEnd())
             {
-                state.ApplyCommands(commands);
+                state.Step(commandsReader);
                 step += 1;
 
                 if (step % 1000000 == 0)

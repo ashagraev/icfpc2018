@@ -80,6 +80,20 @@
         }
     }
 
+    public class TCommandsReader
+    {
+        private readonly List<ICommand> Commands;
+        private int Pos;
+
+        public TCommandsReader(List<ICommand> commands) => Commands = commands;
+ 
+        public bool AtEnd() => Pos >= Commands.Count;
+
+        public void Advance(int count) => Pos += count;
+
+        public ICommand GetCommand(int idx) => Commands[Pos + idx];
+    }
+
     internal class TState
     {
         public TModel Model;
@@ -137,7 +151,7 @@
             return (Bots.Count == 1) && Bots[0].Coord.IsAtStart() && (Harmonics == EHarmonics.Low);
         }
 
-        public void ApplyCommands(TCommands commands)
+        public void Step(TCommandsReader commands)
         {
             if (Harmonics == EHarmonics.Low)
             {
