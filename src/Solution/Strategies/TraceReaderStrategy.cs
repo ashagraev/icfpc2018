@@ -16,13 +16,10 @@
 
         List<ICommand> IStrategy.MakeTrace(TModel model)
         {
-            var modelName = Path.GetFileNameWithoutExtension(model.Path);
-            if (modelName.EndsWith("_tgt"))
-            {
-                modelName = modelName.Remove(modelName.Length - 4);
-            }
-
-            return TraceReader.Read($"{tracesDir}/{modelName}.nbt");
+            var traceFile = $"{tracesDir}/{model.Name}.nbt";
+            return File.Exists(traceFile)
+                ? TraceReader.Read(traceFile)
+                : new List<ICommand>();
         }
     }
 }

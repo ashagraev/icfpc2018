@@ -19,6 +19,7 @@
         public int Z;
 
         public int ALen() => Math.Min(Math.Min(Math.Abs(X), Math.Abs(Y)), Math.Abs(Z));
+
         public int MLen() => Math.Abs(X) + Math.Abs(Y) + Math.Abs(Z);
 
         public void Apply(CoordDiff diff)
@@ -40,26 +41,32 @@
 
     public struct TModel
     {
-        public readonly string Path;
+        public readonly string Name;
         public readonly int R;
 
-        private readonly int[,,] TargetMatrix;
+        private readonly int[,,] targetMatrix;
 
-        public int this[int i, int j, int k] => TargetMatrix[i, j, k];
-        public int this[TCoord coord] => TargetMatrix[coord.X, coord.Y, coord.Z];
+        public int this[int i, int j, int k] => targetMatrix[i, j, k];
+
+        public int this[TCoord coord] => targetMatrix[coord.X, coord.Y, coord.Z];
 
         public TModel(string path)
         {
-            Path = path;
+            Name = Path.GetFileNameWithoutExtension(path);
+            if (Name.EndsWith("_tgt"))
+            {
+                Name = Name.Remove(Name.Length - 4);
+            }
+
             using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read))
             {
                 var br = new BinaryReader(fs, new ASCIIEncoding());
 
                 R = br.ReadByte();
 
-                TargetMatrix = new int[R, R, R];
+                targetMatrix = new int[R, R, R];
 
-                var bytesCount = (int)Math.Ceiling((float)TargetMatrix.Length / 8);
+                var bytesCount = (int)Math.Ceiling((float)targetMatrix.Length / 8);
                 var bytes = br.ReadBytes(bytesCount);
 
                 for (var x = 0; x < R; ++x)
@@ -78,7 +85,7 @@
                             int curByte = bytes[byteNumber];
                             var curRes = curByte & mask;
 
-                            TargetMatrix[x, y, z] = curRes > 0 ? 1 : 0;
+                            targetMatrix[x, y, z] = curRes > 0 ? 1 : 0;
                         }
                     }
                 }
@@ -93,23 +100,22 @@
 
         public TCommandsReader(List<ICommand> commands) => Commands = commands;
 
-        public bool AtEnd() => Pos >= Commands.Count;
-
         public void Advance(int count) => Pos += count;
+
+        public bool AtEnd() => Pos >= Commands.Count;
 
         public ICommand GetCommand(int idx) => Commands[Pos + idx];
     }
 
     public class TState
     {
-        public TModel Model;
-
         public List<TBot> Bots = new List<TBot>();
 
         public long Energy;
         public EHarmonics Harmonics = EHarmonics.Low;
 
         public int[,,] Matrix;
+        public TModel Model;
 
         public TState(TModel model)
         {
@@ -259,7 +265,8 @@
 
                     case FusionS fusionS:
                     {
-                        throw new NotImplementedException("FusionS is not implemented yet!"); ;
+                        throw new NotImplementedException("FusionS is not implemented yet!");
+                        
                     }
 
                     default: throw new InvalidOperationException("unknown item type");

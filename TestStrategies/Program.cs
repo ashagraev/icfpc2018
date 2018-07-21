@@ -9,10 +9,11 @@
         {
             StrategyTester.Test(
                 "Data/Problems",
+                "Data/BestTraces",
                 new IStrategy[]
                 {
                     new TTraceReaderStrategy("Data/DefaultTraces"),
-                    //new AlexShBaseStrategy(),
+                    new AlexShBaseStrategy(),
                 }
             );
         }
