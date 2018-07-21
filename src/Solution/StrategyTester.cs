@@ -106,6 +106,7 @@
 
         private static void MakeSubmission(string bestStrategiesDirectory)
         {
+            File.Delete("submission.zip");
             ZipFile.CreateFromDirectory(bestStrategiesDirectory, "submission.zip");
 
             var sha256 = SHA256.Create();
@@ -115,6 +116,7 @@
                 hash = sha256.ComputeHash(f);
             }
 
+            File.Delete("submission.sha256.txt");
             using (var f = File.OpenWrite("submission.sha256.txt"))
             {
                 var hex = BitConverter.ToString(hash).Replace("-", string.Empty);
