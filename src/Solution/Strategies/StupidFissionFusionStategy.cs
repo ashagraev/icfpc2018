@@ -121,6 +121,21 @@
                     }
                 });
 
+            void MoveOneBot(int index, int toX, int toY, int toZ)
+            {
+                Move(
+                    () =>
+                    {
+                        var bot = bss[index];
+                        bot.Move(toX, toY, toZ);
+                    });
+            }
+
+            MoveOneBot(0, 0, bss[0].Position.Y, 0);
+            MoveOneBot(1, 0, bss[1].Position.Y, 0);
+            MoveOneBot(0, 0, 0, 0);
+            MoveOneBot(1, 0, 1, 0);
+
             return result;
         }
 
