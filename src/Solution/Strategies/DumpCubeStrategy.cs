@@ -65,13 +65,20 @@ namespace Solution.Strategies
 
         public TCoord Next()
         {
-            if (LetGoBack || Current.Y > MaxY)
+            if (LetGoBack || Current.Y > MaxY + 1)
             {
                 LetGoBack = true;
                 return NextForReturn();
             }
 
-            if (Current.Y % 2 == 0)
+            if (Current.IsAtStart())
+            {
+                Direction.Dy = 1;
+                Current.Apply(Direction);
+                return Current;
+            }
+
+            if (Current.Y % 2 == 1)
             {
                 if (Current.X + 1 == R && Current.Z + 1 == R)               // end of life
                 {
@@ -88,25 +95,29 @@ namespace Solution.Strategies
                 else if (Direction.Dx == 1 && Current.X + 1 == R)           // one step forward Z
                 {
                     Direction.Dx = 0;
+                    Direction.Dy = 0;
                     Direction.Dz = 1;
                 }
                 else if (Direction.Dz == 1 && Current.X + 1 == R)           // walk backward X
                 {
                     Direction.Dx = -1;
+                    Direction.Dy = 0;
                     Direction.Dz = 0;
                 }
                 else if (Direction.Dx == -1 && Current.X == 0)              // one step forward Z
                 {
                     Direction.Dx = 0;
+                    Direction.Dy = 0;
                     Direction.Dz = 1;
                 }
                 else if (Direction.Dz == 1 && Current.X == 0)               // walk again forward X
                 {
                     Direction.Dx = 1;
+                    Direction.Dy = 0;
                     Direction.Dz = 0;
                 }
             }
-            else if (Current.Y % 2 == 1)
+            else if (Current.Y % 2 == 0)
             {
                 if (Current.X == 0 && Current.Z == 0)               // end of life
                 {
@@ -123,21 +134,25 @@ namespace Solution.Strategies
                 else if (Direction.Dx == -1 && Current.X == 0)              // one step backward Z
                 {
                     Direction.Dx = 0;
+                    Direction.Dy = 0;
                     Direction.Dz = -1;
                 }
                 else if (Direction.Dz == -1 && Current.X == 0)              // walk forward X
                 {
                     Direction.Dx = 1;
+                    Direction.Dy = 0;
                     Direction.Dz = 0;
                 }
                 else if (Direction.Dx == 1 && Current.X + 1 == R)           // one step backward Z
                 {
                     Direction.Dx = 0;
+                    Direction.Dy = 0;
                     Direction.Dz = -1;
                 }
                 else if (Direction.Dz == -1 && Current.X + 1 == R)          // walk again backward X
                 {
                     Direction.Dx = -1;
+                    Direction.Dy = 0;
                     Direction.Dz = 0;
                 }
             }
@@ -167,10 +182,10 @@ namespace Solution.Strategies
                 move.Diff = dumpCureTraverse.GetDirection();
                 result.Add(move);
 
-                if (model[current] > 0)
+                if (next.Y > 0 && model[next.X, next.Y - 1, next.Z] > 0)
                 {
                     Fill fill = new Fill();
-                    fill.Diff = dumpCureTraverse.FillPreviousDirection();
+                    fill.Diff.Dy = -1;
                     result.Add(fill);
                 }
 
