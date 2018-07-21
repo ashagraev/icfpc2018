@@ -28,7 +28,7 @@
 
             TestStrategy(new DumpCubeStrategy());
             TestStrategy(new BetterCubeStrategy());
-            TestStrategy(new TTraceReaderStrategy($"Data/Traces/{modelName}.nbt"));
+            TestStrategy(new TTraceReaderStrategy($"Data/DefaultTraces/{modelName}.nbt"));
             TestStrategy(new BfsStrategy());
         }
     }
