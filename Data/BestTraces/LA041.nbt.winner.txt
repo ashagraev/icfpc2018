@@ -1,1 +1,1 @@
-Strategy: Traces:DefaultTraces
+Strategy: DumpCubeStrategyaces

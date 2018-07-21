@@ -54,7 +54,7 @@
                 Console.WriteLine(state.Energy);
             }
 
-            File.WriteAllBytes("trace", TraceSerializer.Serialize(trace));
+            File.WriteAllBytes("trace", TraceSerializer.Serialize(betterTrace));
         }
     }
 }

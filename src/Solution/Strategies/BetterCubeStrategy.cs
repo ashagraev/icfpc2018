@@ -81,7 +81,7 @@ namespace Solution.Strategies
             return Current;
         }
 
-        public TCoord Next()
+        public TCoord Next(TModel model)
         {
             if (LetGoBack || Current.Y > MaxY + 1)
             {
@@ -107,7 +107,7 @@ namespace Solution.Strategies
 
                 if (Current.X < targetX)
                 {
-                    Direction.Dx = 1;
+                    Direction.Dx = Math.Min(15, targetX - Current.X);
                     Direction.Dy = 0;
                     Direction.Dz = 0;
                     Current.Apply(Direction);
@@ -117,13 +117,13 @@ namespace Solution.Strategies
                 {
                     Direction.Dx = 0;
                     Direction.Dy = 0;
-                    Direction.Dz = 1;
+                    Direction.Dz = Math.Min(15, targetZ - Current.Z);
                     Current.Apply(Direction);
                     return Current;
                 }
                 if (Current.X > targetX)
                 {
-                    Direction.Dx = -1;
+                    Direction.Dx = Math.Max(-15, targetX - Current.X);
                     Direction.Dy = 0;
                     Direction.Dz = 0;
                     Current.Apply(Direction);
@@ -133,7 +133,7 @@ namespace Solution.Strategies
                 {
                     Direction.Dx = 0;
                     Direction.Dy = 0;
-                    Direction.Dz = -1;
+                    Direction.Dz = Math.Max(-15, targetZ - Current.Z);
                     Current.Apply(Direction);
                     return Current;
                 }
@@ -156,25 +156,25 @@ namespace Solution.Strategies
                     Direction.Dy = 0;
                     Direction.Dz = 0;
                 }
-                else if (Direction.Dx == 1 && Current.X > borders.MaxX)           // one step forward Z
+                else if (Direction.Dx > 0 && Current.X > borders.MaxX)           // one step forward Z
                 {
                     Direction.Dx = 0;
                     Direction.Dy = 0;
                     Direction.Dz = 1;
                 }
-                else if (Direction.Dz == 1 && Current.X > borders.MaxX)           // walk backward X
+                else if (Direction.Dz > 0 && Current.X > borders.MaxX)           // walk backward X
                 {
                     Direction.Dx = -1;
                     Direction.Dy = 0;
                     Direction.Dz = 0;
                 }
-                else if (Direction.Dx == -1 && Current.X < borders.MinX)              // one step forward Z
+                else if (Direction.Dx < 0 && Current.X < borders.MinX)              // one step forward Z
                 {
                     Direction.Dx = 0;
                     Direction.Dy = 0;
                     Direction.Dz = 1;
                 }
-                else if (Direction.Dz == 1 && Current.X < borders.MinX)               // walk again forward X
+                else if (Direction.Dz > 0 && Current.X < borders.MinX)               // walk again forward X
                 {
                     Direction.Dx = 1;
                     Direction.Dy = 0;
@@ -196,25 +196,25 @@ namespace Solution.Strategies
                     Direction.Dy = 0;
                     Direction.Dz = 0;
                 }
-                else if (Direction.Dx == -1 && Current.X < borders.MinX)              // one step backward Z
+                else if (Direction.Dx < 0 && Current.X < borders.MinX)              // one step backward Z
                 {
                     Direction.Dx = 0;
                     Direction.Dy = 0;
                     Direction.Dz = -1;
                 }
-                else if (Direction.Dz == -1 && Current.X < borders.MinX)              // walk forward X
+                else if (Direction.Dz < 0 && Current.X < borders.MinX)              // walk forward X
                 {
                     Direction.Dx = 1;
                     Direction.Dy = 0;
                     Direction.Dz = 0;
                 }
-                else if (Direction.Dx == 1 && Current.X > borders.MaxX)           // one step backward Z
+                else if (Direction.Dx > 0 && Current.X > borders.MaxX)           // one step backward Z
                 {
                     Direction.Dx = 0;
                     Direction.Dy = 0;
                     Direction.Dz = -1;
                 }
-                else if (Direction.Dz == -1 && Current.X > borders.MaxX)          // walk again backward X
+                else if (Direction.Dz < 0 && Current.X > borders.MaxX)          // walk again backward X
                 {
                     Direction.Dx = -1;
                     Direction.Dy = 0;
@@ -229,12 +229,13 @@ namespace Solution.Strategies
 
     public class BetterCubeStrategy : IStrategy
     {
-        public string Name => nameof(DumpCubeStrategy);
+        public string Name => nameof(BetterCubeStrategy);
 
         public List<ICommand> MakeTrace(TModel model)
         {
+            EHarmonics curHarmonics = EHarmonics.Low;
+
             List<ICommand> result = new List<ICommand>();
-            result.Add(new Flip());
 
             TCoord current = new TCoord();
             TBetterCubeTraverse betterCureTraverse = new TBetterCubeTraverse(model);
@@ -242,23 +243,38 @@ namespace Solution.Strategies
             int iteration = 0;
             while (iteration == 0 || !current.IsAtStart())
             {
-                TCoord next = betterCureTraverse.Next();
+                TCoord next = betterCureTraverse.Next(model);
                 StraightMove move = new StraightMove();
                 move.Diff = betterCureTraverse.GetDirection();
                 result.Add(move);
 
                 if (next.Y > 0 && model[next.X, next.Y - 1, next.Z] > 0)
                 {
+                    if (curHarmonics == EHarmonics.Low)
+                    {
+                        result.Add(new Flip());
+                        curHarmonics = EHarmonics.High;
+                    }
+
                     Fill fill = new Fill();
                     fill.Diff.Dy = -1;
                     result.Add(fill);
+                }
+                else if (curHarmonics == EHarmonics.High)
+                {
+                    result.Add(new Flip());
+                    curHarmonics = EHarmonics.Low;
                 }
 
                 current = next;
                 ++iteration;
             }
 
-            result.Add(new Flip());
+            if (curHarmonics == EHarmonics.High)
+            {
+                result.Add(new Flip());
+            }
+
             result.Add(new Halt());
 
             return result;
