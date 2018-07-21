@@ -4,9 +4,9 @@
     using System.Collections.Generic;
     using System.Runtime.InteropServices.WindowsRuntime;
 
-    public class TraceWriter
+    public class TraceSerializer
     {
-        public static byte[] Write(IEnumerable<object> commands)
+        public static byte[] Serialize(IEnumerable<object> commands)
         {
             var result = new List<byte>();
             foreach (var cmd in commands)

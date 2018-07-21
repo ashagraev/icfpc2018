@@ -8,14 +8,14 @@
     using Solution;
 
     [TestClass]
-    public class TraceWriter_Test
+    public class TraceSerializer_Test
     {
         [TestMethod]
         public void TestRoundtrip()
         {
             var inBytes = File.ReadAllBytes("LA008.nbt");
             var commands = TraceReader.Read(inBytes);
-            var outBytes = TraceWriter.Write(commands);
+            var outBytes = TraceSerializer.Serialize(commands);
             Assert.AreEqual(inBytes.Length, outBytes.Length);
             for (var i = 0; i < inBytes.Length; i++)
             {
