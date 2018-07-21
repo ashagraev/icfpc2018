@@ -3,8 +3,6 @@
     using System;
     using System.Collections.Generic;
     using System.Linq;
-    using System.Runtime.CompilerServices;
-    using System.Runtime.InteropServices.ComTypes;
 
     public class StupidFissionFusionStategy : IStrategy
     {
@@ -49,7 +47,7 @@
                 new BotState { Position = new Coord(initialBs.Position.X, initialBs.Position.Y + 1, initialBs.Position.Z) },
                 new BotState { Position = new Coord(initialBs.Position.X + 1, initialBs.Position.Y, initialBs.Position.Z) },
             };
-            
+
             var r = model.R;
             for (var x = 0; x < r; ++x)
             {
@@ -103,7 +101,7 @@
                     }
                 }
             }
-            
+
             Move(
                 () =>
                 {
@@ -291,7 +289,7 @@
 
                     return;
                 }
-                
+
                 HashSet<Coord> voxelsToFill;
                 YToVoxels.TryGetValue(Position.Y - 1, out voxelsToFill);
                 if (voxelsToFill == null || voxelsToFill.Count == 0)
