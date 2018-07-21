@@ -3,9 +3,21 @@ namespace Solution.Strategies
 {
     using System;
     using System.Collections.Generic;
+    using System.Reflection.Emit;
+
+    public class TBorders
+    {
+        public int MinX = 1000000;
+        public int MinZ = 1000000;
+
+        public int MaxX = 0;
+        public int MaxZ = 0;
+    }
 
     public class TDumpCubeTraverse
     {
+        private List<TBorders> LevelBorders;
+
         private CoordDiff Direction = new CoordDiff();
         private TCoord Current = new TCoord();
 
@@ -13,16 +25,31 @@ namespace Solution.Strategies
         private int MaxY = 0;
 
         private bool LetGoBack = false;
+        private bool SearchStartPosition = true;
 
         public TDumpCubeTraverse(TModel model)
         {
             R = model.R;
 
-            for (int x = 0; x < R; ++x)
-                for (int z = 0; z < R; ++z)
-                for (int y = 0; y < R; ++y)
-                    if (model[x, y, z] > 0)
-                        MaxY = Math.Max(MaxY, y);
+            LevelBorders = new List<TBorders>();
+
+            for (int y = 0; y < R; ++y)
+            {
+                TBorders thisLevelBorders = new TBorders();
+                for (int x = 0; x < R; ++x)
+                    for (int z = 0; z < R; ++z)
+                        if (model[x, y, z] > 0)
+                        {
+                            MaxY = Math.Max(MaxY, y);
+
+                            thisLevelBorders.MinX = Math.Min(thisLevelBorders.MinX, x);
+                            thisLevelBorders.MaxX = Math.Max(thisLevelBorders.MaxX, x);
+
+                            thisLevelBorders.MinZ = Math.Min(thisLevelBorders.MinZ, z);
+                            thisLevelBorders.MaxZ = Math.Max(thisLevelBorders.MaxZ, z);
+                        }
+                LevelBorders.Add(thisLevelBorders);
+            }
         }
 
         public CoordDiff GetDirection()
@@ -71,46 +98,92 @@ namespace Solution.Strategies
                 return NextForReturn();
             }
 
-            if (Current.IsAtStart())
+            if (Current.Y == 0)
             {
+                Direction.Dx = 0;
                 Direction.Dy = 1;
+                Direction.Dz = 0;
                 Current.Apply(Direction);
                 return Current;
             }
 
+            TBorders borders = LevelBorders[Current.Y - 1];
+
+            if (SearchStartPosition)
+            {
+                int targetX = (Current.Y % 2 == 1) ? borders.MinX : borders.MaxX;
+                int targetZ = (Current.Y % 2 == 1) ? borders.MinZ : borders.MaxZ;
+
+                if (Current.X < targetX)
+                {
+                    Direction.Dx = 1;
+                    Direction.Dy = 0;
+                    Direction.Dz = 0;
+                    Current.Apply(Direction);
+                    return Current;
+                }
+                if (Current.Z < targetZ)
+                {
+                    Direction.Dx = 0;
+                    Direction.Dy = 0;
+                    Direction.Dz = 1;
+                    Current.Apply(Direction);
+                    return Current;
+                }
+                if (Current.X > targetX)
+                {
+                    Direction.Dx = -1;
+                    Direction.Dy = 0;
+                    Direction.Dz = 0;
+                    Current.Apply(Direction);
+                    return Current;
+                }
+                if (Current.Z > targetZ)
+                {
+                    Direction.Dx = 0;
+                    Direction.Dy = 0;
+                    Direction.Dz = -1;
+                    Current.Apply(Direction);
+                    return Current;
+                }
+
+                SearchStartPosition = false;
+            }
+
             if (Current.Y % 2 == 1)
             {
-                if (Current.X + 1 == R && Current.Z + 1 == R)               // end of life
+                if (Current.X > borders.MaxX && Current.Z > borders.MaxZ)               // end of life
                 {
                     Direction.Dx = 0;
                     Direction.Dy = 1;
                     Direction.Dz = 0;
+                    SearchStartPosition = true;
                 }
-                else if (Current.X == 0 && Current.Z == 0)                  // walk forward X
+                else if (Current.X == borders.MinX && Current.Z == borders.MinZ)                  // walk forward X
                 {
                     Direction.Dx = 1;
                     Direction.Dy = 0;
                     Direction.Dz = 0;
                 }
-                else if (Direction.Dx == 1 && Current.X + 1 == R)           // one step forward Z
+                else if (Direction.Dx == 1 && Current.X > borders.MaxX)           // one step forward Z
                 {
                     Direction.Dx = 0;
                     Direction.Dy = 0;
                     Direction.Dz = 1;
                 }
-                else if (Direction.Dz == 1 && Current.X + 1 == R)           // walk backward X
+                else if (Direction.Dz == 1 && Current.X > borders.MaxX)           // walk backward X
                 {
                     Direction.Dx = -1;
                     Direction.Dy = 0;
                     Direction.Dz = 0;
                 }
-                else if (Direction.Dx == -1 && Current.X == 0)              // one step forward Z
+                else if (Direction.Dx == -1 && Current.X < borders.MinX)              // one step forward Z
                 {
                     Direction.Dx = 0;
                     Direction.Dy = 0;
                     Direction.Dz = 1;
                 }
-                else if (Direction.Dz == 1 && Current.X == 0)               // walk again forward X
+                else if (Direction.Dz == 1 && Current.X < borders.MinX)               // walk again forward X
                 {
                     Direction.Dx = 1;
                     Direction.Dy = 0;
@@ -119,37 +192,38 @@ namespace Solution.Strategies
             }
             else if (Current.Y % 2 == 0)
             {
-                if (Current.X == 0 && Current.Z == 0)               // end of life
+                if (Current.X < borders.MinX && Current.Z < borders.MinZ)               // end of life
                 {
                     Direction.Dx = 0;
                     Direction.Dy = 1;
                     Direction.Dz = 0;
+                    SearchStartPosition = true;
                 }
-                else if (Current.X + 1 == R && Current.Z + 1 == R)          // walk backward X
+                else if (Current.X == borders.MaxX && Current.Z == borders.MaxZ)          // walk backward X
                 {
                     Direction.Dx = -1;
                     Direction.Dy = 0;
                     Direction.Dz = 0;
                 }
-                else if (Direction.Dx == -1 && Current.X == 0)              // one step backward Z
+                else if (Direction.Dx == -1 && Current.X < borders.MinX)              // one step backward Z
                 {
                     Direction.Dx = 0;
                     Direction.Dy = 0;
                     Direction.Dz = -1;
                 }
-                else if (Direction.Dz == -1 && Current.X == 0)              // walk forward X
+                else if (Direction.Dz == -1 && Current.X < borders.MinX)              // walk forward X
                 {
                     Direction.Dx = 1;
                     Direction.Dy = 0;
                     Direction.Dz = 0;
                 }
-                else if (Direction.Dx == 1 && Current.X + 1 == R)           // one step backward Z
+                else if (Direction.Dx == 1 && Current.X > borders.MaxX)           // one step backward Z
                 {
                     Direction.Dx = 0;
                     Direction.Dy = 0;
                     Direction.Dz = -1;
                 }
-                else if (Direction.Dz == -1 && Current.X + 1 == R)          // walk again backward X
+                else if (Direction.Dz == -1 && Current.X > borders.MaxX)          // walk again backward X
                 {
                     Direction.Dx = -1;
                     Direction.Dy = 0;
