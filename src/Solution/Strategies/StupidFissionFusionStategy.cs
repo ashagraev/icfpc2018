@@ -135,6 +135,9 @@
             MoveOneBot(1, 0, bss[1].Position.Y, 0);
             MoveOneBot(0, 0, 0, 0);
             MoveOneBot(1, 0, 1, 0);
+            MoveOneBot(2, rangeX.Max - 1, bss[2].Position.Y, rangeZ.Max);
+
+            Move(() => bss[2].Finalize(model, rangeZ));
 
             return result;
         }
@@ -159,7 +162,7 @@
             }
         }
 
-        public class Coord
+        public class Coord : IEquatable<Coord>
         {
             public int X;
             public int Y;
@@ -186,7 +189,7 @@
                 }.MLen();
             }
 
-            protected bool Equals(Coord other) => X == other.X && Y == other.Y && Z == other.Z;
+            public bool Equals(Coord other) => X == other.X && Y == other.Y && Z == other.Z;
 
             public override bool Equals(object obj) => Equals((Coord)obj);
 
@@ -209,7 +212,9 @@
 
             public Dictionary<int, HashSet<Coord>> YToVoxels = new Dictionary<int, HashSet<Coord>>();
             public Coord CurrentVoxel;
-            public bool Halt = false;
+            public bool Halt;
+            public int FinalDirection = -1;
+            public HashSet<Coord> FinalCoords = new HashSet<Coord>();
 
             public void Move(int tgtX, int tgtY, int tgtZ)
             {
@@ -301,6 +306,44 @@
                 voxelsToFill.Remove(bestVoxel);
                 CurrentVoxel = bestVoxel;
                 CurrentCommand = new Wait();
+            }
+
+            public void Finalize(TModel model, Range rangeZ)
+            {
+                if (Position.X == 0 && Position.Z == 0)
+                {
+                    CurrentCommand = null;
+                    return;
+                }
+
+                if (model[Position.X + 1, Position.Y, Position.Z] > 0)
+                {
+                    var toFill = new Coord(Position.X + 1, Position.Y, Position.Z);
+                    if (!FinalCoords.Contains(toFill))
+                    {
+                        CurrentCommand = new Fill(1, 0, 0);
+                        FinalCoords.Add(toFill);
+                        return;
+                    }
+                }
+
+                var nextZ = Position.Z + FinalDirection;
+                if (nextZ < 0 || nextZ > rangeZ.Max)
+                {
+                    if (Position.X == 0)
+                    {
+                        CurrentCommand = null;
+                    }
+                    else
+                    {
+                        Move(Position.X - 1, Position.Y, Position.Z);
+                        FinalDirection = -FinalDirection;
+                    }
+
+                    return;
+                }
+
+                Move(Position.X, Position.Y, nextZ);
             }
 
             private int GetMoveDelta(int needed, int have)
