@@ -25,6 +25,7 @@
                 }
 
                 Console.WriteLine(state.HasValidFinalState());
+                Console.WriteLine(state.Energy);
             }
             {
                 TState state = new TState(model);
@@ -35,6 +36,7 @@
                 }
 
                 Console.WriteLine(state.HasValidFinalState());
+                Console.WriteLine(state.Energy);
             }
 
             File.WriteAllBytes("trace", TraceSerializer.Serialize(trace));
