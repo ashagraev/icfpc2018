@@ -46,69 +46,59 @@
             var lastFourBits = firstByte & 0b0000_1111;
             byte SecondByte() => bytes[startIndex + 1];
 
-            if (lastFourBits == 0b0000_0100)
+            switch (lastFourBits)
             {
-                var axis = (firstByte & 0b00_11_0000) >> 4;
-                var delta = SecondByte() & 0b000_11111;
-                commandSize = 2;
-                return new StraightMove
-                {
-                    Diff = ReadDiff(axis, delta, 15)
-                };
-            }
-
-            if (lastFourBits == 0b0000_1100)
-            {
-                var axis1 = (firstByte & 0b00_11_0000) >> 4;
-                var delta1 = SecondByte() & 0b0000_1111;
-                var axis2 = (firstByte & 0b11_00_0000) >> 6;
-                var delta2 = (SecondByte() & 0b1111_0000) >> 4;
-                commandSize = 2;
-                return new LMove
-                {
-                    Diff1 = ReadDiff(axis1, delta1, 5),
-                    Diff2 = ReadDiff(axis2, delta2, 5)
-                };
+                case 0b0000_0100:
+                    var axis = (firstByte & 0b00_11_0000) >> 4;
+                    var delta = SecondByte() & 0b000_11111;
+                    commandSize = 2;
+                    return new StraightMove
+                    {
+                        Diff = ReadDiff(axis, delta, Constants.StraightMoveCorrection)
+                    };
+                case 0b0000_1100:
+                    var axis1 = (firstByte & 0b00_11_0000) >> 4;
+                    var delta1 = SecondByte() & 0b0000_1111;
+                    var axis2 = (firstByte & 0b11_00_0000) >> 6;
+                    var delta2 = (SecondByte() & 0b1111_0000) >> 4;
+                    commandSize = 2;
+                    return new LMove
+                    {
+                        Diff1 = ReadDiff(axis1, delta1, Constants.LMoveCorrection),
+                        Diff2 = ReadDiff(axis2, delta2, Constants.LMoveCorrection)
+                    };
             }
 
             var lastThreeBits = firstByte & 0b0000_0111;
             var diff = DecodeNear((firstByte & 0b1111_1000) >> 3);
 
-            if (lastThreeBits == 0b111)
+            switch (lastThreeBits)
             {
-                commandSize = 1;
-                return new FusionP
-                {
-                    Diff = diff
-                };
-            }
-
-            if (lastThreeBits == 0b110)
-            {
-                commandSize = 1;
-                return new FusionS
-                {
-                    Diff = diff
-                };
-            }
-
-            if (lastThreeBits == 0b101)
-            {
-                commandSize = 2;
-                return new Fission
-                {
-                    Diff = diff,
-                    M = SecondByte()
-                };
-            }
-
-            if (lastThreeBits == 0b011)
-            {
-                commandSize = 1;
-                return new Fill
-                {
-                    Diff = diff
-                };
+                case 0b111:
+                    commandSize = 1;
+                    return new FusionP
+                    {
+                        Diff = diff
+                    };
+                case 0b110:
+                    commandSize = 1;
+                    return new FusionS
+                    {
+                        Diff = diff
+                    };
+                case 0b101:
+                    commandSize = 2;
+                    return new Fission
+                    {
+                        Diff = diff,
+                        M = SecondByte()
+                    };
+                case 0b011:
+                    commandSize = 1;
+                    return new Fill
+                    {
+                        Diff = diff
+                    };
             }
 
             throw new Exception(string.Format("Unknown command start with {0}", firstByte));

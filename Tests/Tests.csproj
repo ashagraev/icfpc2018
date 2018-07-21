@@ -11,4 +11,9 @@
   <ItemGroup>
     <ProjectReference Include="..\src\Solution\Solution.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <None Update="LA008.nbt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
 </Project>
