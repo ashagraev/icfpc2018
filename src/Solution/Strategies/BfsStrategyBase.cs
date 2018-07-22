@@ -7,7 +7,7 @@
     // [BrokenStrategy]
     public abstract class BfsStrategyBase : IStrategy
     {
-        private readonly int maxBots = 2;
+        private readonly int maxBots = 6;
 
         public virtual string Name => nameof(BfsStrategyBase);
 
@@ -65,7 +65,7 @@
                         Seeds = new List<int>()
                     }
                 };
-                for (var i = 2; i <= 20; ++i)
+                for (var i = 2; i <= 40; ++i)
                 {
                     bots[0].Seeds.Add(i);
                 }
@@ -88,7 +88,6 @@
 
                 CalcDepth();
             }
-
             private void CalcDepth()
             {
                 depth_ = new int[model.R, model.R, model.R];
@@ -148,6 +147,7 @@
                     }
 
                     var newBots = new List<Bot>();
+                    var filledCoords = new List<TCoord>();
 
                     if ((availablePositions.Count == 0) && (bots.Count == 1) && bots[0].Coord.IsAtStart())
                     {
@@ -171,9 +171,9 @@
                         {
                             idle = false;
                             var pc = bot.Coord;
-                            yield return MoveBot(bot, newBots);
+                            yield return MoveBot(bot, newBots, filledCoords);
 
-                            Console.WriteLine($"{pc} -> {bot.Coord}");
+                            // Console.WriteLine($"{pc} -> {bot.Coord}");
                         }
                         else
                         {
@@ -201,6 +201,19 @@
                         // Console.WriteLine("HEY");
                         bots.AddRange(newBots);
                         bots = bots.OrderBy(bot => bot.Id).ToList();
+                    }
+
+                    foreach (var c in filledCoords)
+                    {
+                        state.Matrix[c.X, c.Y, c.Z] = 1;
+                        foreach (var n in c.ManhattenNeighbours())
+                        {
+                            if (n.IsValid(model.R) && model[n] != 0 && !addedPositions.Contains(n))
+                            {
+                                addedPositions.Add(n);
+                                availablePositions.Add(n);
+                            }
+                        }
                     }
                 }
             }
@@ -235,7 +248,7 @@
                 return IsFree(bot.Target.Value);
             }
 
-            private ICommand MoveBot(Bot bot, List<Bot> newBots)
+            private ICommand MoveBot(Bot bot, List<Bot> newBots, List<TCoord> filledCoords)
             {
                 if (bot.NextCommand < (bot.MoveCommands?.Count ?? 0))
                 {
@@ -249,7 +262,7 @@
                         case LMove m:
                             throw new NotImplementedException();
                         default:
-                            throw new Exception("WTF");
+                            throw new Exception($"WTF, unexpected command: {bot.GetType().FullName}");
                     }
                 }
 
@@ -277,16 +290,9 @@
 
                 if (bot.FillTarget != null)
                 {
+                    interferedCells.Add(bot.FillTarget.Value);
                     availablePositions.Remove(bot.FillTarget.Value);
-                    state.Matrix[bot.FillTarget.Value.X, bot.FillTarget.Value.Y, bot.FillTarget.Value.Z] = 1;
-                    foreach (var c in bot.FillTarget.Value.ManhattenNeighbours())
-                    {
-                        if (c.IsValid(model.R) && (model[c] != 0) && !addedPositions.Contains(c))
-                        {
-                            addedPositions.Add(c);
-                            availablePositions.Add(c);
-                        }
-                    }
+                    filledCoords.Add(bot.FillTarget.Value);
 
                     var ret = new Fill
                     {
@@ -310,7 +316,7 @@
                     bot.Seeds.Count > 0 &&
                     availablePositions.Count(p => Depth(p) == currentDepth) > bots.Count * 2)
                 {
-                    foreach (var coord in bot.Coord.NearNeighbours().Where(n => n.IsValid(model.R) && IsFree(n)))
+                    foreach (var coord in bot.Coord.NearNeighbours().Where(n => n.IsValid(model.R) && IsFree(n) && Depth(n) < currentDepth))
                     {
                         bot.FissionTarget = coord;
                         return;
@@ -322,7 +328,6 @@
                     bot.MoveTarget = new TCoord(0, 0, 0);
                     foreach (var c in EnumerateReachablePaths(bot.Coord))
                     {
-                        Console.WriteLine(c.Coord);
                         if (c.Coord.IsAtStart())
                         {
                             bot.MoveCommands = c.RecreatePath(bot.Coord);
@@ -333,6 +338,7 @@
 
                     if (bot.MoveCommands == null)
                     {
+                        return;
                         throw new Exception("NO PATH TO ORIGIN!");
                     }
                     
@@ -351,16 +357,16 @@
                                     availablePositions.Contains(n));
                         foreach (var n in neighbours)
                         {
-                            bot.FillTarget = n;
-                            bot.MoveCommands = c.RecreatePath(bot.Coord);
-                            return;
+                            if (true) //bots.Count(b => b.Target != null && b.Target.Value.Equals(n)) == 0)}
+                            {
+                                bot.FillTarget = n;
+                                bot.MoveCommands = c.RecreatePath(bot.Coord);
+                                // Console.WriteLine($"COORDS: {bot.Id}@{bot.Coord}, TARGET: {bot.Target}, D: {(bot.Target == null ? -1 : Depth(bot.Target.Value))}, M: {bot.MoveCommands?.Count}");
+                                return;
+                            }
                         }
-
                     }
                 }
-                
-
-                // Console.WriteLine($"COORDS: {bot.Coord}, TARGET: {bot.Target}, D: {(bot.Target == null ? -1 : Depth(bot.Target.Value))}, M: {bot.MoveCommands?.Count}");
             }
 
             private bool IsFree(TCoord coord) => (state.M(coord) == 0) && !interferedCells.Contains(coord);

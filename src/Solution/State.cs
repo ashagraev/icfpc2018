@@ -328,14 +328,14 @@ namespace Solution
 
                         for (var i = 1; i <= fission.M; ++i)
                         {
-                            newBot.Seeds.Append(bot.Seeds[i]);
+                            newBot.Seeds.Add(bot.Seeds[i]);
                         }
 
                         bot.Seeds.RemoveRange(0, fission.M + 1);
 
                         newBot.Coord = bot.Coord;
                         newBot.Coord.Apply(fission.Diff);
-
+                            
                         volatiles.Update(bot.Coord, bot);
                         volatiles.Update(newBot.Coord, newBot);
 
