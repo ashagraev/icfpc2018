@@ -5,6 +5,7 @@
     using System.IO;
     using System.IO.Compression;
     using System.Linq;
+    using System.Reflection.Metadata.Ecma335;
     using System.Security.Cryptography;
     using System.Text;
     using System.Threading.Tasks;
@@ -18,6 +19,7 @@
         private string BestStrategiesDirectory;
         private string DefaultTracesDirectory;
         private TTraceReaderStrategy BestStrategy;
+        private TTraceReaderStrategy BaselineStrategy;
         private IStrategy[] Strategies;
         private Dictionary<string, long> StrategyStats;
 
@@ -29,17 +31,27 @@
             StrategyStats = new Dictionary<String, long>();
             Strategies = strategiesEnum.ToArray();
             BestStrategy = new TTraceReaderStrategy("Data/BestTraces");
+            BaselineStrategy = new TTraceReaderStrategy("Data/DefaultTraces");
+
+            foreach (var strategy in Strategies)
+            {
+                StrategyStats[strategy.Name] = 0;
+            }
+            StrategyStats[BaselineStrategy.Name] = 0;
 
             var models = LoadModels(modelsDirectory);
             Parallel.ForEach<TModel>(models, new ParallelOptions { MaxDegreeOfParallelism = 15 }, ProcessModel);
 
-            var baselineStrategy = new TTraceReaderStrategy("Data/DefaultTraces");
-
             foreach (IStrategy s in Strategies)
             {
+                if (!StrategyStats.ContainsKey(s.Name))
+                {
+                    continue;
+                }
+
                 Console.WriteLine(s.Name);
                 Console.WriteLine(StrategyStats[s.Name]);
-                Console.WriteLine((float) StrategyStats[s.Name] / StrategyStats[baselineStrategy.Name]);
+                Console.WriteLine((float) StrategyStats[s.Name] / StrategyStats[BaselineStrategy.Name]);
                 Console.WriteLine("");
             }
 
@@ -53,17 +65,27 @@
 
             var traceFile = $"{BestStrategiesDirectory}/{model.Name}.nbt";
 
-            if (!Path.GetFileName(model.Name).StartsWith("FA"))
+            if (!Path.GetFileName(model.Name).StartsWith("FD"))
             {
-                // TODO: remove this stupid hack when our strategies are able to destroy/reassemble models.
-                File.Copy($"{DefaultTracesDirectory}/{Path.GetFileName(traceFile)}", traceFile, true);
                 return;
             }
 
-            writer.WriteLine($"{model.Name}");
-            var (best, _) = RunStrategy(model, BestStrategy, writer);
+            IStrategy[] allowedStrategies = Strategies;
+            if (!Path.GetFileName(model.Name).StartsWith("FA"))
+            {
+                // TODO: remove this stupid hack when our strategies are able to destroy/reassemble models.
+                allowedStrategies = new IStrategy[1];
+                allowedStrategies[0] = new DumpCubeStrategy();
+//                File.Copy($"{DefaultTracesDirectory}/{Path.GetFileName(traceFile)}", traceFile, true);
+            }
 
-            foreach (var strategy in Strategies)
+            writer.WriteLine($"{model.Name}");
+            var (best, _) = RunStrategy(model, BaselineStrategy, writer);
+            if (best != null) {
+                StrategyStats[BaselineStrategy.Name] += best.Value;
+            }
+
+            foreach (var strategy in allowedStrategies)
             {
                 var (energy, commands) = RunStrategy(model, strategy, writer);
 
@@ -71,14 +93,7 @@
                 {
                     lock (Lock)
                     {
-                        if (StrategyStats.ContainsKey(strategy.Name))
-                        {
-                            StrategyStats[strategy.Name] += energy.Value;
-                        }
-                        else
-                        {
-                            StrategyStats[strategy.Name] = energy.Value;
-                        }
+                        StrategyStats[strategy.Name] += energy.Value;
                     }
                 }
 
@@ -124,7 +139,7 @@
                     result.Add(new TModel(file));
                 }
             }
-            result.Reverse();
+            //      result.Reverse();
             return result;
         }
 
