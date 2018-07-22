@@ -8,12 +8,14 @@
         // Both of these are updated from outside!
         private TModel model;
         private TState state;
+        private int[,,] depth;
         private HashSet<TCoord> interferedCells;
 
-        public PathEnumerator(TModel model, TState state, HashSet<TCoord> interferedCells)
+        public PathEnumerator(TModel model, TState state, int[,,] depth, HashSet<TCoord> interferedCells)
         {
             this.model = model;
             this.state = state;
+            this.depth = depth;
             this.interferedCells = interferedCells;
 
             cells = new CellData[model.R, model.R, model.R];
@@ -68,7 +70,7 @@
         }
 
 
-        public IEnumerable<CoordWithPath> EnumerateReachablePaths(TCoord src)
+        public IEnumerable<CoordWithPath> EnumerateReachablePaths(TCoord src, int maxDepth)
         {
             ++curGeneration;
 
@@ -121,7 +123,7 @@
                         minCoord.Apply(new CoordDiff(-1 * dx, -1 * dy, -1 * dz));
                         --min;
                     }
-                    while ((min >= -Constants.StraightMoveCorrection) && minCoord.IsValid(model.R) && IsFree(minCoord));
+                    while ((min >= -Constants.StraightMoveCorrection) && minCoord.IsValid(model.R) && IsFree(minCoord, maxDepth));
 
                     var max = 0;
                     var maxCoord = cur;
@@ -130,7 +132,7 @@
                         maxCoord.Apply(new CoordDiff(dx, dy, dz));
                         ++max;
                     }
-                    while ((max <= Constants.StraightMoveCorrection) && maxCoord.IsValid(model.R) && IsFree(maxCoord));
+                    while ((max <= Constants.StraightMoveCorrection) && maxCoord.IsValid(model.R) && IsFree(maxCoord, maxDepth));
 
                     return (min + 1, max - 1);
                 }
@@ -171,6 +173,9 @@
             }
         }
 
-        private bool IsFree(TCoord coord) => (state.M(coord) == 0) && !interferedCells.Contains(coord);
+        private bool IsFree(TCoord coord, int maxDepth) =>
+            (state.M(coord) == 0) &&
+            depth[coord.X, coord.Y, coord.Z] < maxDepth &&
+            !interferedCells.Contains(coord);
     }
 }
