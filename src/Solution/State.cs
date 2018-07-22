@@ -178,6 +178,8 @@ namespace Solution
         public int[,,] Matrix;
         public TModel Model;
 
+        public int M(TCoord c) => Matrix[c.X, c.Y, c.Z];
+
         public TState(TModel model)
         {
             Model = model;

@@ -39,14 +39,16 @@
 
             private readonly TModel model;
             private readonly int maxBots;
+            private int[,,] depth_;
+
             private readonly TState state;
             private List<Bot> bots;
-
-            private int[,,] depth;
-
             private readonly HashSet<TCoord> addedPositions;
             private readonly HashSet<TCoord> availablePositions;
             private readonly HashSet<TCoord> interferedCells;
+            private int currentDepth;
+
+            int Depth(TCoord c) => depth_[c.X, c.Y, c.Z];
 
             public Impl(TModel model, int maxBots)
             {
@@ -89,40 +91,40 @@
 
             private void CalcDepth()
             {
-                depth = new int[model.R, model.R, model.R];
+                depth_ = new int[model.R, model.R, model.R];
                 var queue = new Queue<TCoord>();
                 var queue2 = new Queue<TCoord>();
                 queue.Enqueue(new TCoord(0, 0, 0));
-                depth[0, 0, 0] = 1;
+                depth_[0, 0, 0] = 1;
                 while (queue.Count != 0)
                 {
                     var cur = queue.Dequeue();
                     if (model[cur] != 0)
                     {
-                        var d = depth[cur.X, cur.Y, cur.Z];
-                        foreach (var n in cur.ManhattenNeighbours().Where(n => n.IsValid(model.R) && (depth[n.X, n.Y, n.Z] == 0)))
+                        var d = Depth(cur);
+                        foreach (var n in cur.ManhattenNeighbours().Where(n => n.IsValid(model.R) && (Depth(n) == 0)))
                         {
-                            depth[n.X, n.Y, n.Z] = d + 1;
+                            depth_[n.X, n.Y, n.Z] = d + 1;
                             queue.Enqueue(n);
                         }
                     }
                     else
                     {
-                        var d = depth[cur.X, cur.Y, cur.Z];
+                        var d = Depth(cur);
                         queue2.Enqueue(cur);
                         while (queue2.Count != 0)
                         {
                             var cur2 = queue2.Dequeue();
-                            foreach (var n in cur2.ManhattenNeighbours().Where(n => n.IsValid(model.R) && (depth[n.X, n.Y, n.Z] == 0)))
+                            foreach (var n in cur2.ManhattenNeighbours().Where(n => n.IsValid(model.R) && (Depth(n) == 0)))
                             {
                                 if (model[n] == 0)
                                 {
-                                    depth[n.X, n.Y, n.Z] = d;
+                                    depth_[n.X, n.Y, n.Z] = d;
                                     queue2.Enqueue(n);
                                 }
                                 else
                                 {
-                                    depth[n.X, n.Y, n.Z] = d + 1;
+                                    depth_[n.X, n.Y, n.Z] = d + 1;
                                     queue.Enqueue(n);
                                 }
                             }
@@ -153,9 +155,14 @@
                         yield break;
                     }
 
+                    if (availablePositions.Count != 0)
+                    {
+                        currentDepth = availablePositions.Select(Depth).Max();
+                    }
+
                     foreach (var bot in bots)
                     {
-                        if ((bot.Target == null) || !CanMove(bot))
+                        if ((bot.Target == null) || !CanMove(bot) || (bot.FillTarget != null && Depth(bot.FillTarget.Value) != currentDepth))
                         {
                             ChooseNewTarget(bot, newBots);
                         }
@@ -319,8 +326,7 @@
                 }
 
                 var bestFillTarget = (Rank: double.MinValue, Coord: default(TCoord));
-                var maxDepth = availablePositions.Select(p => depth[p.X, p.Y, p.Z]).Max();
-                foreach (var coord in availablePositions.Where(p => depth[p.X, p.Y, p.Z] == maxDepth))
+                foreach (var coord in availablePositions.Where(p => Depth(p) == currentDepth))
                 {
                     var rank = CalcRank(bot, coord);
                     if (rank > bestFillTarget.Rank)
@@ -332,21 +338,18 @@
                 if (bestFillTarget.Rank != double.MinValue)
                 {
                     var bestMovementTarget = (Cost: int.MaxValue, Path: (List<ICommand>)null);
-                    var fillDepth = depth[bestFillTarget.Coord.X, bestFillTarget.Coord.Y, bestFillTarget.Coord.Z];
+                    var fillDepth = depth_[bestFillTarget.Coord.X, bestFillTarget.Coord.Y, bestFillTarget.Coord.Z];
                     var goodNeighbours = bestFillTarget.Coord.ManhattenNeighbours().Where(
-                            n =>
-                                n.IsValid(model.R) &&
-                                depth[n.X, n.Y, n.Z] < fillDepth &&
-                                state.Matrix[n.X, n.Y, n.Z] == 0);
+                        n =>
+                            n.IsValid(model.R) &&
+                            Depth(n) < fillDepth &&
+                            state.M(n) == 0);
                     foreach (var coord in goodNeighbours)
                     {
-                        if (coord.IsValid(model.R) && (state.Matrix[coord.X, coord.Y, coord.Z] == 0))
+                        var (path, cost) = FindPath(bot.Coord, coord);
+                        if ((path != null) && (cost < bestMovementTarget.Cost))
                         {
-                            var (path, cost) = FindPath(bot.Coord, coord);
-                            if ((path != null) && (cost < bestMovementTarget.Cost))
-                            {
-                                bestMovementTarget = (Cost: cost, Path: path);
-                            }
+                            bestMovementTarget = (Cost: cost, Path: path);
                         }
                     }
 
@@ -354,21 +357,13 @@
                     {
                         bot.FillTarget = bestFillTarget.Coord;
                         bot.MoveCommands = bestMovementTarget.Path;
-
-                        /*
-                                                Console.WriteLine($"BC: {bestMovementTarget.Cost}");
-                                                foreach (var c in bestMovementTarget.Path)
-                                                {
-                                                    Console.WriteLine(c);
-                                                }
-                                                */
                     }
                 }
 
-                // Console.WriteLine($"COORDS: {bot.Coord}, TARGET: {bot.Target}, D: {(bot.Target == null ? -1 : depth[bot.Target.Value.X, bot.Target.Value.Y, bot.Target.Value.Z])}, M: {bot.MoveCommands?.Count}");
+                // Console.WriteLine($"COORDS: {bot.Coord}, TARGET: {bot.Target}, D: {(bot.Target == null ? -1 : Depth(bot.Target.Value))}, M: {bot.MoveCommands?.Count}");
             }
 
-            private bool IsFree(TCoord coord) => (state.Matrix[coord.X, coord.Y, coord.Z] == 0) && !interferedCells.Contains(coord);
+            private bool IsFree(TCoord coord) => (state.M(coord) == 0) && !interferedCells.Contains(coord);
 
             private double CalcRank(Bot bot, TCoord coord) => -bot.Coord.Diff(coord).MLen();
 
@@ -393,7 +388,7 @@
                     var cur = queue.Dequeue();
                     if (cur.Equals(dst))
                     {
-                        return (RecreatePath(), cellData[cur.X, cur.Y, cur.Z].Cost - depth[cur.X, cur.Y, cur.Z] * 65536);
+                        return (RecreatePath(), cellData[cur.X, cur.Y, cur.Z].Cost);
                     }
 
                     var clen = Math.Min(cur.Diff(dst).CLen(), Constants.StraightMoveCorrection);
