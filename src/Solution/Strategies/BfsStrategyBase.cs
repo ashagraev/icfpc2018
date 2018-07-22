@@ -4,6 +4,8 @@
     using System.Collections.Generic;
     using System.Linq;
 
+    using Solution.Strategies.BFS;
+
     // [BrokenStrategy]
     public abstract class BfsStrategyBase : IStrategy
     {
@@ -48,6 +50,8 @@
             private readonly HashSet<TCoord> interferedCells;
             private int currentDepth;
 
+            private BFS.PathEnumerator PathEnumerator;
+
             int Depth(TCoord c) => depth_[c.X, c.Y, c.Z];
 
             public Impl(TModel model, int maxBots)
@@ -87,6 +91,8 @@
                 interferedCells = new HashSet<TCoord>();
 
                 CalcDepth();
+
+                PathEnumerator = new PathEnumerator(model, state, interferedCells);
             }
             private void CalcDepth()
             {
@@ -326,7 +332,7 @@
                 if (availablePositions.Count == 0)
                 {
                     bot.MoveTarget = new TCoord(0, 0, 0);
-                    foreach (var c in EnumerateReachablePaths(bot.Coord))
+                    foreach (var c in PathEnumerator.EnumerateReachablePaths(bot.Coord))
                     {
                         if (c.Coord.IsAtStart())
                         {
@@ -345,7 +351,7 @@
                     return;
                 }
 
-                foreach (var c in EnumerateReachablePaths(bot.Coord))
+                foreach (var c in PathEnumerator.EnumerateReachablePaths(bot.Coord))
                 {
                     if (Depth(c.Coord) < currentDepth)
                     {
@@ -371,153 +377,19 @@
 
             private bool IsFree(TCoord coord) => (state.M(coord) == 0) && !interferedCells.Contains(coord);
 
-            internal struct CellData
+            private static void TraceMove(TCoord botCoord, StraightMove m, Action<TCoord> action)
             {
-                public TCoord From;
-                public int Cost;
-
-                public bool Visited => Cost != 0;
-            }
-
-            internal struct CoordWithPath
-            {
-                public readonly TCoord Coord;
-
-                private readonly CellData[,,] cellData;
-
-                public CoordWithPath(TCoord coord, CellData[,,] cellData)
+                var cur = botCoord;
+                var dst = cur;
+                dst.Apply(m.Diff);
+                var step = new CoordDiff(Math.Sign(m.Diff.Dx), Math.Sign(m.Diff.Dy), Math.Sign(m.Diff.Dz));
+                do
                 {
-                    Coord = coord;
-                    this.cellData = cellData;
+                    cur.Apply(step);
+                    action(cur);
                 }
-
-                public int Cost => cellData[Coord.X, Coord.Y, Coord.Z].Cost;
-
-                public List<ICommand> RecreatePath(TCoord src)
-                {
-                    var path = new List<ICommand>();
-                    var cur = Coord;
-                    while (!cur.Equals(src))
-                    {
-                        var from = cellData[cur.X, cur.Y, cur.Z].From;
-                        path.Add(
-                            new StraightMove
-                            {
-                                Diff = cur.Diff(from)
-                            });
-                        cur = from;
-                    }
-
-                    path.Reverse();
-                    return path;
-                }
+                while (!cur.Equals(dst));
             }
-
-            private IEnumerable<CoordWithPath> EnumerateReachablePaths(TCoord src) {
-                // THIS IS VERY DUMB ALGO. BECAUSE I'M TOO STUPID TO DO BETTER
-                // TODO: support LMoves
-                var cellData = new CellData[model.R, model.R, model.R];
-                var queue = new Queue<TCoord>();
-                queue.Enqueue(src);
-                cellData[src.X, src.Y, src.Z].Cost = 1;
-
-                yield return new CoordWithPath(src, cellData);
-                while (queue.Count != 0)
-                {
-                    var cur = queue.Dequeue();
-
-                    // TODO: smarter precompute?
-                    var (minDx, maxDx) = FindRange(1, 0, 0);
-                    var (minDy, maxDy) = FindRange(0, 1, 0);
-                    var (minDz, maxDz) = FindRange(0, 0, 1);
-
-                    var toEnqueue = new List<TCoord>();
-
-                    // we visit (and yield) closes nodes first
-                    for (var i = 0; i < Constants.StraightMoveCorrection; ++i)
-                    {
-                        foreach (var c in DoVisits(i))
-                        {
-                            yield return c;
-                            toEnqueue.Add(c.Coord);
-                        }
-                    }
-
-                    // but enqueue furthest first
-                    toEnqueue.Reverse();
-                    foreach (var c in toEnqueue)
-                    {
-                        queue.Enqueue(c);
-                    }
-
-                    (int, int) FindRange(int dx, int dy, int dz)
-                    {
-                        var min = 0;
-                        var minCoord = cur;
-                        do
-                        {
-                            minCoord.Apply(new CoordDiff(-1 * dx, -1 * dy, -1 * dz));
-                            --min;
-                        }
-                        while ((min >= -Constants.StraightMoveCorrection) && minCoord.IsValid(model.R) && IsFree(minCoord));
-
-                        var max = 0;
-                        var maxCoord = cur;
-                        do
-                        {
-                            maxCoord.Apply(new CoordDiff(dx, dy, dz));
-                            ++max;
-                        }
-                        while ((max <= Constants.StraightMoveCorrection) && maxCoord.IsValid(model.R) && IsFree(maxCoord));
-
-                        return (min + 1, max - 1);
-                    }
-
-                    IEnumerable<CoordWithPath> DoVisits(int dist)
-                    {
-                        foreach (var c in TryVisit(-dist >= minDx, dist, -dist, 0, 0)) yield return c;
-                        foreach (var c in TryVisit(dist <= maxDx, dist, dist, 0, 0)) yield return c;
-                        foreach (var c in TryVisit(-dist >= minDy, dist, 0, -dist, 0)) yield return c;
-                        foreach (var c in TryVisit(dist <= maxDy, dist, 0, dist, 0)) yield return c;
-                        foreach (var c in TryVisit(-dist >= minDz, dist, 0, 0, -dist)) yield return c;
-                        foreach (var c in TryVisit(dist <= maxDz, dist, 0, 0, dist)) yield return c;
-                    }
-
-                    IEnumerable<CoordWithPath> TryVisit(bool ok, int dist, int dx, int dy, int dz)
-                    {
-                        if (!ok)
-                        {
-                            yield break;
-                        }
-
-                        var next = new TCoord(cur.X + dx, cur.Y + dy, cur.Z + dz);
-                        var curCost = cellData[cur.X, cur.Y, cur.Z].Cost;
-                        if (next.IsValid(model.R) && !cellData[next.X, next.Y, next.Z].Visited)
-                        {
-                            // TODO: add energy maintainance into cost
-                            cellData[next.X, next.Y, next.Z].From = cur;
-                            cellData[next.X, next.Y, next.Z].Cost = curCost + (2 * dist);
-                            yield return new CoordWithPath(next, cellData);
-
-                            // if (!IsFree(next)) throw new Exception("WTF");
-                        }
-                    }
-                }
-            }
-        }
-
-        private static void TraceMove(TCoord botCoord, StraightMove m, Action<TCoord> action)
-        {
-            var cur = botCoord;
-            var dst = cur;
-            dst.Apply(m.Diff);
-            var step = new CoordDiff(Math.Sign(m.Diff.Dx), Math.Sign(m.Diff.Dy), Math.Sign(m.Diff.Dz));
-            do
-            {
-                cur.Apply(step);
-                action(cur);
-            }
-            while (!cur.Equals(dst));
         }
     }
 }
