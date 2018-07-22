@@ -416,7 +416,7 @@
                 {
                     if (Depth(c.Coord) < currentDepth)
                     {
-                        var neighbours = c.Coord.ManhattenNeighbours()
+                        var neighbours = c.Coord.NearNeighbours()
                             .Where(
                                 n =>
                                     n.IsValid(model.R) &&
