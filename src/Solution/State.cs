@@ -351,7 +351,7 @@ namespace Solution
                         break;
                     }
 
-                    default: throw new InvalidOperationException($"unknown item type {command}");
+                    default: throw new InvalidStateException($"unknown item type {command}");
                 }
             }
 
@@ -369,7 +369,7 @@ namespace Solution
         {
             if (fusionPrimaries.Count != fusionSecondaries.Count)
             {
-                throw new InvalidOperationException(
+                throw new InvalidStateException(
                     $"Fusion count mismatch: {fusionPrimaries.Count} primaries, {fusionSecondaries.Count} secondaries");
             }
 
@@ -388,7 +388,7 @@ namespace Solution
                         sanityCheckCoord.Apply(ndS);
                         if (!sanityCheckCoord.Equals(primaryCoord))
                         {
-                            throw new InvalidOperationException($"Fusion coord mismatch: {sanityCheckCoord} vs. {primaryCoord}");
+                            throw new InvalidStateException($"Fusion coord mismatch: {sanityCheckCoord} vs. {primaryCoord}");
                         }
 
                         var prim = Bots[primaryIdx];
@@ -409,5 +409,13 @@ namespace Solution
         }
 
         private void SortBots() => Bots.Sort((x, y) => x.Bid.CompareTo(y.Bid));
+    }
+
+    public class InvalidStateException : Exception
+    {
+        public InvalidStateException(string message)
+            : base(message)
+        {
+        }
     }
 }

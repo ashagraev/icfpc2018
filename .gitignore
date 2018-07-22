@@ -273,3 +273,6 @@ __pycache__/
 
 
 # End of https://www.gitignore.io/api/aspnetcore
+
+# Debugging stuff for dfyz@.
+TraceCreator

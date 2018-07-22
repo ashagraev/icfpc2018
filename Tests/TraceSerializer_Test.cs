@@ -8,7 +8,7 @@
     using Solution;
 
     [TestClass]
-    public class TraceSerializer_Test
+    public class TraceSerializerTest
     {
         [TestMethod]
         public void TestRoundtrip()
