@@ -14,7 +14,9 @@ namespace Solution
 
     public struct TCoord : IEquatable<TCoord>
     {
-        public bool Equals(TCoord other) => X == other.X && Y == other.Y && Z == other.Z;
+        public override string ToString() => "{" + $"{X}, {Y}, {Z}" + "}";
+
+        public bool Equals(TCoord other) => (X == other.X) && (Y == other.Y) && (Z == other.Z);
 
         public override bool Equals(object obj) => Equals((TCoord)obj);
 
@@ -40,10 +42,6 @@ namespace Solution
             Z = z;
         }
 
-        public int ALen() => Math.Min(Math.Min(Math.Abs(X), Math.Abs(Y)), Math.Abs(Z));
-
-        public int MLen() => Math.Abs(X) + Math.Abs(Y) + Math.Abs(Z);
-
         public void Apply(CoordDiff diff)
         {
             X += diff.Dx;
@@ -51,17 +49,44 @@ namespace Solution
             Z += diff.Dz;
         }
 
+        public CoordDiff Diff(TCoord another) => new CoordDiff
+        {
+            Dx = X - another.X,
+            Dy = Y - another.Y,
+            Dz = Z - another.Z
+        };
+
         public bool IsAtStart() => (X == 0) && (Y == 0) && (Z == 0);
 
         public IEnumerable<TCoord> NearNeighbours()
         {
-            throw new NotImplementedException();
+            for (var dx = -1; dx <= 1; ++dx)
+            {
+                for (var dy = -1; dy <= 1; ++dy)
+                {
+                    for (var dz = -1; dz <= 1; ++dz)
+                    {
+                        var s = Math.Abs(dx) + Math.Abs(dy) + Math.Abs(dz);
+                        if ((s != 0) && (s != 3))
+                        {
+                            yield return new TCoord(X + dx, Y + dy, Z + dz);
+                        }
+                    }
+                }
+            }
         }
 
         public IEnumerable<TCoord> ManhattenNeighbours()
         {
-            throw new NotImplementedException();
+            yield return new TCoord(X - 1, Y, Z);
+            yield return new TCoord(X + 1, Y, Z);
+            yield return new TCoord(X, Y - 1, Z);
+            yield return new TCoord(X, Y + 1, Z);
+            yield return new TCoord(X, Y, Z - 1);
+            yield return new TCoord(X, Y, Z + 1);
         }
+
+        public bool IsValid(int r) => (X >= 0) && (X < r) && (Y >= 0) && (Y < r) && (Z >= 0) && (Z < r);
     }
 
     public class TBot
@@ -316,6 +341,7 @@ namespace Solution
             {
                 Fuse(fusionPrimaries, fusionSecondaries);
             }
+
             SortBots();
 
             commands.Advance(botsCount);
@@ -325,7 +351,8 @@ namespace Solution
         {
             if (fusionPrimaries.Count != fusionSecondaries.Count)
             {
-                throw new InvalidOperationException($"Fusion count mismatch: {fusionPrimaries.Count} primaries, {fusionSecondaries.Count} secondaries");
+                throw new InvalidOperationException(
+                    $"Fusion count mismatch: {fusionPrimaries.Count} primaries, {fusionSecondaries.Count} secondaries");
             }
 
             foreach (var (primaryIdx, ndP) in fusionPrimaries)
@@ -363,9 +390,6 @@ namespace Solution
             Bots = Bots.Where(x => x != null).ToList();
         }
 
-        private void SortBots()
-        {
-            Bots.Sort((x, y) => x.Bid.CompareTo(y.Bid));
-        }
+        private void SortBots() => Bots.Sort((x, y) => x.Bid.CompareTo(y.Bid));
     }
 }
