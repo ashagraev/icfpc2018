@@ -10,7 +10,7 @@
         private static void Main(string[] args)
         {
             var modelName = "FA001";
-            var suffix = modelName.Contains("FA") ? "_tgt" : "src";
+            var suffix = modelName.Contains("FA") ? "tgt" : "src";
             var model = new TModel($"Data/Problems/{modelName}_{suffix}.mdl");
 
             void TestStrategy(IStrategy strategy, bool saveTrace = false)
@@ -29,14 +29,14 @@
 
                 if (saveTrace)
                 {
-                    File.WriteAllBytes("C://GitHub//icfpc2018//trace1", TraceSerializer.Serialize(trace));
+                    File.WriteAllBytes("trace.nbt", TraceSerializer.Serialize(trace));
                 }
             }
 
             //TestStrategy(new DumpCubeStrategy());
             TestStrategy(new DumpCubeStrategy(), true);
             TestStrategy(new TTraceReaderStrategy($"data/DefaultTraces"));
-            //TestStrategy(new BfsStrategy(), true);
+            TestStrategy(new BfsStrategy(), true);
         }
     }
 }
