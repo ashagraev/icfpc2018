@@ -269,15 +269,15 @@ namespace Solution
 
                     case StraightMove move:
                     {
-                        bot.Coord.Apply(move.Diff);
+                        MoveBot(bot, move.Diff);
                         Energy += 2 * move.Diff.MLen();
                         break;
                     }
 
                     case LMove lMove:
                     {
-                        bot.Coord.Apply(lMove.Diff1);
-                        bot.Coord.Apply(lMove.Diff2);
+                        MoveBot(bot, lMove.Diff1);
+                        MoveBot(bot, lMove.Diff2);
 
                         Energy += 2 * (lMove.Diff1.MLen() + 2 + lMove.Diff2.MLen());
 
@@ -375,9 +375,31 @@ namespace Solution
             commands.Advance(botsCount);
         }
 
+        private bool this[TCoord c] => c.IsValid(Model.R) && Matrix[c.X, c.Y, c.Z] > 0;
+
+        private void MoveBot(TBot bot, CoordDiff diff)
+        {
+            if (EnableValidation)
+            {
+                var miniDiff = new CoordDiff(Math.Sign(diff.Dx), Math.Sign(diff.Dy), Math.Sign(diff.Dz));
+                var current = bot.Coord;
+                var end = bot.Coord;
+                end.Apply(diff);
+                while (!current.Equals(end))
+                {
+                    current.Apply(miniDiff);
+                    if (this[current])
+                    {
+                        throw new InvalidStateException($"Coord {current} is occupied when moving bot {bot.Bid}");
+                    }
+                }
+            }
+            bot.Coord.Apply(diff);
+        }
+
         private bool IsGrounded(TCoord coord, HashSet<TCoord> visited)
         {
-            if (visited.Contains(coord) || !coord.IsValid(Model.R) || Matrix[coord.X, coord.Y, coord.Z] == 0)
+            if (visited.Contains(coord) || !coord.IsValid(Model.R) || !this[coord])
             {
                 return false;
             }
