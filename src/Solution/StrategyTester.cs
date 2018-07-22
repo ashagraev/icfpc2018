@@ -31,10 +31,7 @@
             BestStrategy = new TTraceReaderStrategy("Data/BestTraces");
 
             var models = LoadModels(modelsDirectory);
-            foreach (var model in models)
-            {
-                ProcessModel(model);
-            }
+            Parallel.ForEach<TModel>(models, new ParallelOptions { MaxDegreeOfParallelism = 10 }, ProcessModel);
 
             var baselineStrategy = new TTraceReaderStrategy("Data/DefaultTraces");
 
