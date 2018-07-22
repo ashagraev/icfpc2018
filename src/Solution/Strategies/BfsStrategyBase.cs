@@ -163,7 +163,7 @@
                             idle = false;
                             var pc = bot.Coord;
                             yield return MoveBot(bot, ref newBots);
-                            Console.WriteLine($"{pc} -> {bot.Coord}");
+                            //Console.WriteLine($"{pc} -> {bot.Coord}");
                         }
                         else
                         {
@@ -370,7 +370,7 @@
                     }
                 }
 
-                Console.WriteLine($"COORDS: {bot.Coord}, TARGET: {bot.Target}, D: {(bot.Target == null ? -1 : depth[bot.Target.Value.X, bot.Target.Value.Y, bot.Target.Value.Z])}, M: {bot.MoveCommands?.Count}");
+                //Console.WriteLine($"COORDS: {bot.Coord}, TARGET: {bot.Target}, D: {(bot.Target == null ? -1 : depth[bot.Target.Value.X, bot.Target.Value.Y, bot.Target.Value.Z])}, M: {bot.MoveCommands?.Count}");
             }
 
             private bool IsFree(TCoord coord) => !interferedCells.Contains(coord) && (state.Matrix[coord.X, coord.Y, coord.Z] == 0);
