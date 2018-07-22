@@ -370,7 +370,7 @@
 
             private bool IsFree(TCoord coord) => (state.Matrix[coord.X, coord.Y, coord.Z] == 0) && !interferedCells.Contains(coord);
 
-            private double CalcRank(Bot bot, TCoord coord) => bot.Coord.Diff(coord).MLen();
+            private double CalcRank(Bot bot, TCoord coord) => -bot.Coord.Diff(coord).MLen();
 
             private struct TCellData
             {
