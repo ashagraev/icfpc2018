@@ -504,6 +504,11 @@ namespace Solution
 
             public void Update(TCoord coord, TBot bot)
             {
+                if (Coords == null)
+                {
+                    return;
+                }
+
                 if (Coords.Contains(coord))
                 {
                     throw new InvalidStateException($"bot {bot.Bid} interferes with other bots at {coord}");
