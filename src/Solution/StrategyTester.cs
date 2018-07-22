@@ -10,9 +10,11 @@
 
     using Solution.Strategies;
 
-    public static class StrategyTester
+    public class StrategyTester
     {
-        public static void Test(string modelsDirectory, string bestStrategiesDirectory, string defaultTracesDirectory, IEnumerable<IStrategy> strategiesEnum)
+        private Object Lock = new Object();
+
+        public void Test(string modelsDirectory, string bestStrategiesDirectory, string defaultTracesDirectory, IEnumerable<IStrategy> strategiesEnum)
         {
             var strategyStats = new Dictionary<String, long>();
             var strategies = strategiesEnum.ToArray();
@@ -25,19 +27,19 @@
             }
 
             var baselineStrategy = new TTraceReaderStrategy("Data/DefaultTraces");
-            /*
+
             foreach (IStrategy s in strategies)
             {
                 Console.WriteLine(s.Name);
                 Console.WriteLine(strategyStats[s.Name]);
                 Console.WriteLine((float) strategyStats[s.Name] / strategyStats[baselineStrategy.Name]);
                 Console.WriteLine("");
-            }*/
+            }
 
             MakeSubmission(bestStrategiesDirectory, defaultTracesDirectory);
         }
 
-        private static void ProcessModel(
+        private void ProcessModel(
             string bestStrategiesDirectory,
             string defaultTracesDirectory,
             TModel model,
@@ -66,13 +68,16 @@
 
                 if (energy != null)
                 {
-                    if (strategyStats.ContainsKey(strategy.Name))
+                    lock (Lock)
                     {
-                        strategyStats[strategy.Name] += energy.Value;
-                    }
-                    else
-                    {
-                        strategyStats[strategy.Name] = energy.Value;
+                        if (strategyStats.ContainsKey(strategy.Name))
+                        {
+                            strategyStats[strategy.Name] += energy.Value;
+                        }
+                        else
+                        {
+                            strategyStats[strategy.Name] = energy.Value;
+                        }
                     }
                 }
 
@@ -105,7 +110,7 @@
             Console.Write(reader.ReadToEnd());
         }
 
-        private static IEnumerable<TModel> LoadModels(string modelsDirectory)
+        private IEnumerable<TModel> LoadModels(string modelsDirectory)
         {
             foreach (var file in Directory.EnumerateFiles(modelsDirectory))
             {
@@ -116,7 +121,7 @@
             }
         }
 
-        private static (long? energy, List<ICommand> commands) RunStrategy(TModel model, IStrategy strategy, StreamWriter writer)
+        private (long? energy, List<ICommand> commands) RunStrategy(TModel model, IStrategy strategy, StreamWriter writer)
         {
             writer.Write($"  {strategy.Name}: ");
 
@@ -156,7 +161,7 @@
             }
         }
 
-        private static void MakeSubmission(string bestStrategiesDirectory, string defaultTracesDirectory)
+        private void MakeSubmission(string bestStrategiesDirectory, string defaultTracesDirectory)
         {
             var submissionDirectory = "SubmissionContents";
             if (Directory.Exists(submissionDirectory))
