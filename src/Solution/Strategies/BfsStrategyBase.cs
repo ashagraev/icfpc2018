@@ -39,7 +39,8 @@
             private readonly int maxBots;
             private TState state;
             private List<Bot> bots;
-            private readonly int numFilled = 0;
+
+            private int[,,] depth;
 
             private readonly HashSet<TCoord> addedPositions;
             private readonly HashSet<TCoord> availablePositions;
@@ -73,19 +74,66 @@
                     {
                         if (model[x, 0, z] == 1)
                         {
+                            addedPositions.Add(new TCoord(x, 0, z));
                             availablePositions.Add(new TCoord(x, 0, z));
                         }
                     }
                 }
 
                 interferedCells = new HashSet<TCoord>();
+
+                CalcDepth();
+            }
+
+            private void CalcDepth()
+            {
+                depth = new int[model.R, model.R, model.R];
+                var queue = new Queue<TCoord>();
+                var queue2 = new Queue<TCoord>();
+                queue.Enqueue(new TCoord(0, 0, 0));
+                depth[0, 0, 0] = 1;
+                while (queue.Count != 0)
+                {
+                    var cur = queue.Dequeue();
+                    if (model[cur] != 0)
+                    {
+                        int d = depth[cur.X, cur.Y, cur.Z];
+                        foreach(var n in cur.ManhattenNeighbours().Where(n => n.IsValid(model.R) && depth[n.X, n.Y, n.Z] == 0))
+                        {
+                            depth[n.X, n.Y, n.Z] = d + 1;
+                            queue.Enqueue(n);
+                        }
+                    }
+                    else
+                    {
+                        int d = depth[cur.X, cur.Y, cur.Z];
+                        queue2.Enqueue(cur);
+                        while (queue2.Count != 0)
+                        {
+                            var cur2 = queue2.Dequeue();
+                            foreach (var n in cur2.ManhattenNeighbours().Where(n => n.IsValid(model.R) && depth[n.X, n.Y, n.Z] == 0))
+                            {
+                                if (model[n] == 0)
+                                {
+                                    depth[n.X, n.Y, n.Z] = d;
+                                    queue2.Enqueue(n);
+                                }
+                                else
+                                {
+                                    depth[n.X, n.Y, n.Z] = d + 1;
+                                    queue.Enqueue(n);
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
             public IEnumerable<ICommand> MakeTrace()
             {
                 var idleSteps = 0;
 
-                while (numFilled != model.NumFilled)
+                while (true)
                 {
                     var idle = true;
                     interferedCells.Clear();
@@ -115,7 +163,7 @@
                             idle = false;
                             var pc = bot.Coord;
                             yield return MoveBot(bot, ref newBots);
-                            // Console.WriteLine($"{pc} -> {bot.Coord}");
+                            Console.WriteLine($"{pc} -> {bot.Coord}");
                         }
                         else
                         {
@@ -128,6 +176,8 @@
                         // we are stuck. Just produce some garbage trace
                         if (++idleSteps >= 2)
                         {
+                            Console.WriteLine("STUCK");
+                            yield break;
                             throw new Exception("STUCK");
                         }
                     }
@@ -151,7 +201,20 @@
                     switch (bot.MoveCommands[bot.NextCommand])
                     {
                         case StraightMove m:
-                            // TODOwr
+                            TCoord cur = bot.Coord;
+                            TCoord dst = cur;
+                            dst.Apply(m.Diff);
+                            var step = new CoordDiff(Math.Sign(m.Diff.Dx), Math.Sign(m.Diff.Dy), Math.Sign(m.Diff.Dz));
+                            do
+                            {
+                                cur.Apply(step);
+                                if (!IsFree(cur))
+                                {
+                                    return false;
+                                }
+                            }
+                            while (!cur.Equals(dst));
+
                             return true;
                         case LMove m:
                             throw new NotImplementedException();
@@ -173,6 +236,8 @@
                         case StraightMove m:
                             bot.Coord.Apply(m.Diff);
                             ++bot.NextCommand;
+
+                            // TODO: mark interfered cells
                             return m;
                         case LMove m:
                             throw new NotImplementedException();
@@ -191,7 +256,6 @@
                     var m = bot.Seeds.Count;
 
                     // TODO: add bot into newBots
-
                     bot.FissionTarget = null;
 
                     // TODO: coorddiff
@@ -210,6 +274,7 @@
                 if (bot.FillTarget != null)
                 {
                     availablePositions.Remove(bot.FillTarget.Value);
+                    state.Matrix[bot.FillTarget.Value.X, bot.FillTarget.Value.Y, bot.FillTarget.Value.Z] = 1;
                     foreach (var c in bot.FillTarget.Value.ManhattenNeighbours())
                     {
                         if (c.IsValid(model.R) && model[c] != 0 && !addedPositions.Contains(c))
@@ -218,6 +283,7 @@
                             availablePositions.Add(c);
                         }
                     }
+
                     var ret = new Fill
                     {
                         Diff = bot.FillTarget.Value.Diff(bot.Coord)
@@ -279,10 +345,13 @@
                     var bestMovementTarget = (Cost: int.MaxValue, Path: (List<ICommand>)null);
                     foreach (var coord in bestFillTarget.Coord.ManhattenNeighbours())
                     {
-                        var (path, cost) = FindPath(bot.Coord, coord);
-                        if ((path != null) && (cost < bestMovementTarget.Cost))
+                        if (coord.IsValid(model.R) && state.Matrix[coord.X, coord.Y, coord.Z] == 0)
                         {
-                            bestMovementTarget = (Cost: cost, Path: path);
+                            var (path, cost) = FindPath(bot.Coord, coord);
+                            if ((path != null) && (cost < bestMovementTarget.Cost))
+                            {
+                                bestMovementTarget = (Cost: cost, Path: path);
+                            }
                         }
                     }
 
@@ -290,22 +359,24 @@
                     {
                         bot.FillTarget = bestFillTarget.Coord;
                         bot.MoveCommands = bestMovementTarget.Path;
+
                         /*
-                        Console.WriteLine($"BC: {bestMovementTarget.Cost}");
-                        foreach (var c in bestMovementTarget.Path)
-                        {
-                            Console.WriteLine(c);
-                        }
-                        */
+                                                Console.WriteLine($"BC: {bestMovementTarget.Cost}");
+                                                foreach (var c in bestMovementTarget.Path)
+                                                {
+                                                    Console.WriteLine(c);
+                                                }
+                                                */
                     }
                 }
 
-                //Console.WriteLine($"COORDS: {bot.Coord}, TARGET: {bot.Target}, M: {bot.MoveCommands.Count}");
+                Console.WriteLine($"COORDS: {bot.Coord}, TARGET: {bot.Target}, D: {(bot.Target == null ? -1 : depth[bot.Target.Value.X, bot.Target.Value.Y, bot.Target.Value.Z])}, M: {bot.MoveCommands?.Count}");
             }
 
             private bool IsFree(TCoord coord) => !interferedCells.Contains(coord) && (state.Matrix[coord.X, coord.Y, coord.Z] == 0);
 
-            private double CalcRank(Bot bot, TCoord coord) => -bot.Coord.Diff(coord).MLen();
+            private double CalcRank(Bot bot, TCoord coord) =>
+                depth[coord.X, coord.Y, coord.Z] * 65536 - bot.Coord.Diff(coord).MLen();
 
             private struct TCellData
             {
@@ -328,7 +399,8 @@
                     var cur = queue.Dequeue();
                     if (cur.Equals(dst))
                     {
-                        return (RecreatePath(), cellData[cur.X, cur.Y, cur.Z].Cost);
+                        var modifiedCost = cellData[cur.X, cur.Y, cur.Z].Cost - depth[cur.X, cur.Y, cur.Z] * 65536;
+                        return (RecreatePath(), modifiedCost);
                     }
 
                     var clen = Math.Min(cur.Diff(dst).CLen(), Constants.StraightMoveCorrection);
@@ -366,7 +438,7 @@
                             maxCoord.Apply(new CoordDiff(dx, dy, dz));
                             ++max;
                         }
-                        while ((min < Constants.StraightMoveCorrection) && maxCoord.IsValid(model.R) && IsFree(maxCoord));
+                        while ((max <= Constants.StraightMoveCorrection) && maxCoord.IsValid(model.R) && IsFree(maxCoord));
 
                         return (min + 1, max - 1);
                     }
@@ -377,7 +449,7 @@
                         TryVisit(dist <= maxDx, dist, dist, 0, 0);
                         TryVisit(-dist >= minDy, dist, 0, -dist, 0);
                         TryVisit(dist <= maxDy, dist, 0, dist, 0);
-                        TryVisit(dist >= minDz, dist, 0, 0, -dist);
+                        TryVisit(-dist >= minDz, dist, 0, 0, -dist);
                         TryVisit(dist <= maxDz, dist, 0, 0, dist);
                     }
 
@@ -396,6 +468,8 @@
                             cellData[next.X, next.Y, next.Z].From = cur;
                             cellData[next.X, next.Y, next.Z].Cost = curCost + (2 * dist);
                             queue.Enqueue(next);
+
+                            // if (!IsFree(next)) throw new Exception("WTF");
                         }
                     }
                 }

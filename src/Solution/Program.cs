@@ -33,9 +33,9 @@
             }
 
             //TestStrategy(new DumpCubeStrategy());
-            TestStrategy(new BetterCubeStrategy(), true);
+            TestStrategy(new BetterCubeStrategy());
             //TestStrategy(new TTraceReaderStrategy($"data/DefaultTraces"));
-            TestStrategy(new BfsStrategy());
+            TestStrategy(new BfsStrategy(), true);
         }
     }
 }
