@@ -2,6 +2,6 @@
 {
     public class BfsStrategy : BfsStrategyBase
     {
-        public string Name => nameof(BfsStrategy);
+        public override string Name => nameof(BfsStrategy);
     }
 }

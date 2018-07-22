@@ -9,7 +9,7 @@
     {
         private readonly int maxBots = 1;
 
-        public string Name => nameof(BfsStrategyBase);
+        public virtual string Name => nameof(BfsStrategyBase);
 
         public List<ICommand> MakeTrace(TModel model)
         {
