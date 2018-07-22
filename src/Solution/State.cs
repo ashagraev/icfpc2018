@@ -341,6 +341,7 @@ namespace Solution
                                     throw new InvalidStateException($"{newCoord} is not grounded");
                                 }
                             }
+
                             Energy += 12;
                         }
 
@@ -413,8 +414,10 @@ namespace Solution
                         throw new InvalidStateException($"Coord {current} is occupied when moving bot {bot.Bid}");
                     }
                 }
+
                 volatiles.Update(end, bot);
             }
+
             bot.Coord.Apply(diff);
         }
 
@@ -424,6 +427,7 @@ namespace Solution
             {
                 return false;
             }
+
             visited.Add(coord);
             if (coord.Y == 0)
             {
@@ -443,10 +447,12 @@ namespace Solution
 
             foreach (var (primaryIdx, ndP) in fusionPrimaries)
             {
-                var primaryCoord = Bots[primaryIdx].Coord;
+                var prim = Bots[primaryIdx];
+                var primaryCoord = prim.Coord;
                 var secondaryCoord = primaryCoord;
                 secondaryCoord.Apply(ndP);
 
+                bool foundSecondary = false;
                 foreach (var (secondaryIdx, ndS) in fusionSecondaries)
                 {
                     var sec = Bots[secondaryIdx];
@@ -459,7 +465,6 @@ namespace Solution
                             throw new InvalidStateException($"Fusion coord mismatch: {sanityCheckCoord} vs. {primaryCoord}");
                         }
 
-                        var prim = Bots[primaryIdx];
                         prim.Seeds.Add(sec.Bid);
                         prim.Seeds.AddRange(sec.Seeds);
                         prim.Seeds.Sort();
@@ -471,8 +476,14 @@ namespace Solution
 
                         Energy -= 24;
 
+                        foundSecondary = true;
                         break;
                     }
+                }
+
+                if (!foundSecondary)
+                {
+                    throw new InvalidStateException($"no secondary bot at {secondaryCoord} for bot {prim.Bid} at {primaryCoord}");
                 }
             }
 
