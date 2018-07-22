@@ -9,7 +9,7 @@
     {
         private static void Main(string[] args)
         {
-            var modelName = "FA001";
+            var modelName = "FA010";
             var model = new TModel($"Data/Problems/{modelName}_tgt.mdl");
 
             void TestStrategy(IStrategy strategy, bool saveTrace = false)
