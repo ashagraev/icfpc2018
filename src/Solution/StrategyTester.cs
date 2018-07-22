@@ -31,7 +31,7 @@
             BestStrategy = new TTraceReaderStrategy("Data/BestTraces");
 
             var models = LoadModels(modelsDirectory);
-            Parallel.ForEach<TModel>(models, new ParallelOptions { MaxDegreeOfParallelism = 10 }, ProcessModel);
+            Parallel.ForEach<TModel>(models, new ParallelOptions { MaxDegreeOfParallelism = 15 }, ProcessModel);
 
             var baselineStrategy = new TTraceReaderStrategy("Data/DefaultTraces");
 
@@ -114,15 +114,18 @@
             }
     }
 
-        private IEnumerable<TModel> LoadModels(string modelsDirectory)
+        private List<TModel> LoadModels(string modelsDirectory)
         {
+            List<TModel> result = new List<TModel>();
             foreach (var file in Directory.EnumerateFiles(modelsDirectory))
             {
                 if (Path.GetExtension(file) == ".mdl")
                 {
-                    yield return new TModel(file);
+                    result.Add(new TModel(file));
                 }
             }
+            result.Reverse();
+            return result;
         }
 
         private (long? energy, List<ICommand> commands) RunStrategy(TModel model, IStrategy strategy, StreamWriter writer)
