@@ -475,7 +475,7 @@
                 var destCoord = bot.Id == primary.Id ? primaryDest : secondaryDest;
 
                 bot.MoveTarget = destCoord;
-                foreach (var c in PathEnumerator.EnumerateReachablePaths(bot.Coord))
+                foreach (var c in PathEnumerator.EnumerateReachablePaths(bot.Coord, 1000))
                 {
                     if (c.Coord.Equals(destCoord))
                     {

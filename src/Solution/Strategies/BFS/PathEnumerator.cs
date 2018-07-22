@@ -94,24 +94,15 @@
                 var (minDx, maxDx) = FindRange(1, 0, 0);
                 var (minDy, maxDy) = FindRange(0, 1, 0);
                 var (minDz, maxDz) = FindRange(0, 0, 1);
-
-                var toEnqueue = new List<TCoord>();
-
+                
                 // we visit (and yield) closes nodes first
                 for (var i = 0; i < Constants.StraightMoveCorrection; ++i)
                 {
                     foreach (var c in DoVisits(i))
                     {
                         yield return c;
-                        toEnqueue.Add(c.Coord);
+                        queue.Enqueue(c.Coord);
                     }
-                }
-
-                // but enqueue furthest first
-                toEnqueue.Reverse();
-                foreach (var c in toEnqueue)
-                {
-                    queue.Enqueue(c);
                 }
 
                 (int, int) FindRange(int dx, int dy, int dz)
