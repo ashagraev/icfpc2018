@@ -47,6 +47,11 @@
                     case Fill fill:
                         result.Add((byte)(EncodeNearDiff(fill.Diff) | 0b011));
                         break;
+                    case Void @void:
+                        result.Add((byte)(EncodeNearDiff(@void.Diff) | 0b010));
+                        break;
+                    default:
+                        throw new InvalidOperationException($"unknown command {cmd}");
                 }
             }
 

@@ -80,8 +80,9 @@ namespace Tests
                 0b01110101,
                 0b00000101,
                 0b01010011,
+                0b10111010,
             });
-            Assert.AreEqual(4, commands.Count);
+            Assert.AreEqual(5, commands.Count);
             var fp = commands[0] as FusionP;
             Assert.AreEqual(-1, fp.Diff.Dx);
             Assert.AreEqual(1, fp.Diff.Dy);
@@ -98,6 +99,10 @@ namespace Tests
             Assert.AreEqual(0, fill.Diff.Dx);
             Assert.AreEqual(-1, fill.Diff.Dy);
             Assert.AreEqual(0, fill.Diff.Dz);
+            var @void = commands[4] as Void;
+            Assert.AreEqual(1, @void.Diff.Dx);
+            Assert.AreEqual(0, @void.Diff.Dy);
+            Assert.AreEqual(1, @void.Diff.Dz);
         }
     }
 }

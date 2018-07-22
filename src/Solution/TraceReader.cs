@@ -99,6 +99,12 @@
                     {
                         Diff = diff
                     };
+                case 0b010:
+                    commandSize = 1;
+                    return new Void
+                    {
+                        Diff = diff
+                    };
             }
 
             throw new Exception(string.Format("Unknown command start with {0}", firstByte));

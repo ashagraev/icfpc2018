@@ -13,7 +13,7 @@
         [TestMethod]
         public void TestRoundtrip()
         {
-            var inBytes = File.ReadAllBytes("LA008.nbt");
+            var inBytes = File.ReadAllBytes("FR112.nbt");
             var commands = TraceReader.Read(inBytes);
             var outBytes = TraceSerializer.Serialize(commands);
             Assert.AreEqual(inBytes.Length, outBytes.Length);

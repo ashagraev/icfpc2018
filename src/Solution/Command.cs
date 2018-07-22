@@ -93,6 +93,13 @@
         }
     }
 
+    public class Void : ICommand
+    {
+        public CoordDiff Diff;
+
+        public override string ToString() => string.Format("Void(d={0})", Diff);
+    }
+
     public class FusionP : ICommand
     {
         public CoordDiff Diff;

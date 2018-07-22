@@ -321,6 +321,24 @@ namespace Solution
                         break;
                     }
 
+                    case Void @void:
+                    {
+                        var newCoord = bot.Coord;
+                        newCoord.Apply(@void.Diff);
+
+                        if (Matrix[newCoord.X, newCoord.Y, newCoord.Z] > 0)
+                        {
+                            Matrix[newCoord.X, newCoord.Y, newCoord.Z] = 0;
+                            Energy -= 12;
+                        }
+                        else
+                        {
+                            Energy += 3;
+                        }
+
+                        break;
+                    }
+
                     case FusionP fusionP:
                     {
                         fusionPrimaries.Add(botIdx, fusionP.Diff);
