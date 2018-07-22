@@ -166,7 +166,7 @@
 
         private bool IsFree(TCoord coord, int maxDepth) =>
             (state.M(coord) == 0) &&
-            depth[coord.X, coord.Y, coord.Z] < maxDepth &&
+            // depth[coord.X, coord.Y, coord.Z] < maxDepth &&
             !interferedCells.Contains(coord);
     }
 }

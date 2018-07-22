@@ -296,6 +296,12 @@
 
             private ICommand MoveBot(Bot bot, List<Bot> newBots, ref int? deadBotId, List<TCoord> filledCoords)
             {
+                if (bot.MoveTarget != null && bot.MoveTarget.Value.Equals(bot.Coord))
+                {
+                    bot.MoveTarget = null;
+                    return new Wait();
+                }
+
                 if (bot.NextCommand < (bot.MoveCommands?.Count ?? 0))
                 {
                     switch (bot.MoveCommands[bot.NextCommand])
