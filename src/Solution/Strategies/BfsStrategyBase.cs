@@ -402,7 +402,6 @@
                 if (availablePositions.Count == 0)
                 {
                     Fuse(bot);
-                    foreach (var c in PathEnumerator.EnumerateReachablePaths(bot.Coord, 10000))
 
                     if (bot.MoveCommands == null)
                     {
