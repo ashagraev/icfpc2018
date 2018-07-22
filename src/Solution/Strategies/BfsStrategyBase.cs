@@ -3,9 +3,8 @@
     using System;
     using System.Collections.Generic;
     using System.Linq;
-    using System.Net.Sockets;
 
-    [BrokenStrategy]
+    // [BrokenStrategy]
     public abstract class BfsStrategyBase : IStrategy
     {
         public string Name => nameof(BfsStrategyBase);
@@ -27,8 +26,9 @@
                 // Targets
                 public TCoord? FissionTarget;
                 public TCoord? FillTarget;
+                public TCoord? MoveTarget;
 
-                public TCoord? Target => FillTarget ?? FissionTarget;
+                public TCoord? Target => FillTarget ?? FissionTarget ?? MoveTarget;
 
                 // a trace to some cell near target
                 public List<ICommand> MoveCommands;
@@ -36,11 +36,12 @@
             }
 
             private readonly TModel model;
-            private int maxBots;
+            private readonly int maxBots;
             private TState state;
             private List<Bot> bots;
             private readonly int numFilled = 0;
 
+            private readonly HashSet<TCoord> addedPositions;
             private readonly HashSet<TCoord> availablePositions;
             private readonly HashSet<TCoord> interferedCells;
 
@@ -59,12 +60,12 @@
                         Seeds = new List<int>()
                     }
                 };
-                Console.WriteLine(bots.Count);
                 for (var i = 2; i <= 20; ++i)
                 {
                     bots[0].Seeds.Add(i);
                 }
 
+                addedPositions = new HashSet<TCoord>();
                 availablePositions = new HashSet<TCoord>();
                 for (var x = 0; x < model.R; ++x)
                 {
@@ -96,6 +97,12 @@
 
                     List<Bot> newBots = null;
 
+                    if (availablePositions.Count == 0 && bots.Count == 1 && bots[0].Coord.IsAtStart())
+                    {
+                        yield return new Halt();
+                        yield break;
+                    }
+
                     foreach (var bot in bots)
                     {
                         if ((bot.Target == null) || !CanMove(bot))
@@ -106,7 +113,9 @@
                         if ((bot.Target != null) && CanMove(bot))
                         {
                             idle = false;
+                            var pc = bot.Coord;
                             yield return MoveBot(bot, ref newBots);
+                            // Console.WriteLine($"{pc} -> {bot.Coord}");
                         }
                         else
                         {
@@ -117,9 +126,9 @@
                     if (idle)
                     {
                         // we are stuck. Just produce some garbage trace
-                        if (++idleSteps >= 50)
+                        if (++idleSteps >= 2)
                         {
-                            yield break;
+                            throw new Exception("STUCK");
                         }
                     }
                     else
@@ -142,10 +151,10 @@
                     switch (bot.MoveCommands[bot.NextCommand])
                     {
                         case StraightMove m:
-                            // TODO
-                            break;
+                            // TODOwr
+                            return true;
                         case LMove m:
-                            // TODO
+                            throw new NotImplementedException();
                             break;
                         default:
                             throw new Exception("WTF");
@@ -162,10 +171,12 @@
                     switch (bot.MoveCommands[bot.NextCommand])
                     {
                         case StraightMove m:
-                            // TODO: update coords and interferedCells
+                            bot.Coord.Apply(m.Diff);
                             ++bot.NextCommand;
                             return m;
                         case LMove m:
+                            throw new NotImplementedException();
+
                             // TODO: update coords and interferedCells
                             ++bot.NextCommand;
                             return m;
@@ -176,9 +187,12 @@
 
                 if (bot.FissionTarget != null)
                 {
+                    throw new NotImplementedException();
                     var m = bot.Seeds.Count;
 
                     // TODO: add bot into newBots
+
+                    bot.FissionTarget = null;
 
                     // TODO: coorddiff
                     return new Fission
@@ -195,15 +209,21 @@
 
                 if (bot.FillTarget != null)
                 {
-                    return new Fill()
+                    availablePositions.Remove(bot.FillTarget.Value);
+                    foreach (var c in bot.FillTarget.Value.ManhattenNeighbours())
                     {
-                        Diff = new CoordDiff()
+                        if (c.IsValid(model.R) && model[c] != 0 && !addedPositions.Contains(c))
                         {
-                            Dx = 0,
-                            Dy = 0,
-                            Dz = 0,
+                            addedPositions.Add(c);
+                            availablePositions.Add(c);
                         }
+                    }
+                    var ret = new Fill
+                    {
+                        Diff = bot.FillTarget.Value.Diff(bot.Coord)
                     };
+                    bot.FillTarget = null;
+                    return ret;
                 }
 
                 throw new Exception("WTF");
@@ -216,7 +236,8 @@
                 bot.MoveCommands = null;
                 bot.NextCommand = 0;
 
-                if (false && bots.Count + (newBots?.Count ?? 0) < maxBots)
+                // temporary no multiplying
+                if (false && (bots.Count + (newBots?.Count ?? 0) < maxBots))
                 {
                     foreach (var coord in bot.Coord.NearNeighbours())
                     {
@@ -228,10 +249,25 @@
                     }
                 }
 
+                if (availablePositions.Count == 0)
+                {
+                    bot.MoveTarget = new TCoord(0, 0, 0);
+                    var (path, cost) = FindPath(bot.Coord, bot.MoveTarget.Value);
+                    if (path == null)
+                    {
+                        throw new Exception("NO PATH");
+                    }
+
+                    bot.MoveCommands = path;
+                    bot.NextCommand = 0;
+
+                    return;
+                }
+
                 var bestFillTarget = (Rank: double.MinValue, Coord: default(TCoord));
                 foreach (var coord in availablePositions)
                 {
-                    var rank = CalcRank(coord);
+                    var rank = CalcRank(bot, coord);
                     if (rank > bestFillTarget.Rank)
                     {
                         bestFillTarget = (Rank: rank, Coord: coord);
@@ -243,8 +279,8 @@
                     var bestMovementTarget = (Cost: int.MaxValue, Path: (List<ICommand>)null);
                     foreach (var coord in bestFillTarget.Coord.ManhattenNeighbours())
                     {
-                        var (path, cost) = FindPath(coord);
-                        if (path != null && cost < bestMovementTarget.Cost)
+                        var (path, cost) = FindPath(bot.Coord, coord);
+                        if ((path != null) && (cost < bestMovementTarget.Cost))
                         {
                             bestMovementTarget = (Cost: cost, Path: path);
                         }
@@ -254,23 +290,136 @@
                     {
                         bot.FillTarget = bestFillTarget.Coord;
                         bot.MoveCommands = bestMovementTarget.Path;
+                        /*
+                        Console.WriteLine($"BC: {bestMovementTarget.Cost}");
+                        foreach (var c in bestMovementTarget.Path)
+                        {
+                            Console.WriteLine(c);
+                        }
+                        */
                     }
                 }
+
+                //Console.WriteLine($"COORDS: {bot.Coord}, TARGET: {bot.Target}, M: {bot.MoveCommands.Count}");
             }
 
-            private bool IsFree(TCoord coord)
+            private bool IsFree(TCoord coord) => !interferedCells.Contains(coord) && (state.Matrix[coord.X, coord.Y, coord.Z] == 0);
+
+            private double CalcRank(Bot bot, TCoord coord) => -bot.Coord.Diff(coord).MLen();
+
+            private struct TCellData
             {
-                return !interferedCells.Contains(coord) && model[coord.X, coord.Y, coord.Z] == 0;
+                public TCoord From;
+                public int Cost;
+
+                public bool Visited => Cost != 0;
             }
 
-            double CalcRank(TCoord coord)
+            private (List<ICommand> Path, int Cost) FindPath(TCoord src, TCoord dst)
             {
-                return 1;
-            }
+                // THIS IS VERY DUMB ALGO. BECAUSE I'M TOO STUPID TOO CODE DJIKSTRA PROPERLY
+                // TODO: support LMoves
+                var cellData = new TCellData[model.R, model.R, model.R];
+                var queue = new Queue<TCoord>();
+                queue.Enqueue(src);
+                cellData[src.X, src.Y, src.Z].Cost = 1;
+                while (queue.Count != 0)
+                {
+                    var cur = queue.Dequeue();
+                    if (cur.Equals(dst))
+                    {
+                        return (RecreatePath(), cellData[cur.X, cur.Y, cur.Z].Cost);
+                    }
 
-            (List<ICommand> Path, int Cost) FindPath(TCoord coord)
-            {
-                throw new NotImplementedException();
+                    var clen = Math.Min(cur.Diff(dst).CLen(), Constants.StraightMoveCorrection);
+
+                    var (minDx, maxDx) = FindRange(1, 0, 0);
+                    var (minDy, maxDy) = FindRange(0, 1, 0);
+                    var (minDz, maxDz) = FindRange(0, 0, 1);
+
+                    // super heuristic
+                    for (var i = clen; i > 0; --i)
+                    {
+                        DoVisits(i);
+                    }
+
+                    for (var i = clen + 1; i < Constants.StraightMoveCorrection; ++i)
+                    {
+                        DoVisits(i);
+                    }
+
+                    (int, int) FindRange(int dx, int dy, int dz)
+                    {
+                        var min = 0;
+                        var minCoord = cur;
+                        do
+                        {
+                            minCoord.Apply(new CoordDiff(-1 * dx, -1 * dy, -1 * dz));
+                            --min;
+                        }
+                        while ((min >= -Constants.StraightMoveCorrection) && minCoord.IsValid(model.R) && IsFree(minCoord));
+
+                        var max = 0;
+                        var maxCoord = cur;
+                        do
+                        {
+                            maxCoord.Apply(new CoordDiff(dx, dy, dz));
+                            ++max;
+                        }
+                        while ((min < Constants.StraightMoveCorrection) && maxCoord.IsValid(model.R) && IsFree(maxCoord));
+
+                        return (min + 1, max - 1);
+                    }
+
+                    void DoVisits(int dist)
+                    {
+                        TryVisit(-dist >= minDx, dist, -dist, 0, 0);
+                        TryVisit(dist <= maxDx, dist, dist, 0, 0);
+                        TryVisit(-dist >= minDy, dist, 0, -dist, 0);
+                        TryVisit(dist <= maxDy, dist, 0, dist, 0);
+                        TryVisit(dist >= minDz, dist, 0, 0, -dist);
+                        TryVisit(dist <= maxDz, dist, 0, 0, dist);
+                    }
+
+                    void TryVisit(bool ok, int dist, int dx, int dy, int dz)
+                    {
+                        if (!ok)
+                        {
+                            return;
+                        }
+
+                        var next = new TCoord(cur.X + dx, cur.Y + dy, cur.Z + dz);
+                        var curCost = cellData[cur.X, cur.Y, cur.Z].Cost;
+                        if (next.IsValid(model.R) && !cellData[next.X, next.Y, next.Z].Visited)
+                        {
+                            // TODO: add energy maintainance into cost
+                            cellData[next.X, next.Y, next.Z].From = cur;
+                            cellData[next.X, next.Y, next.Z].Cost = curCost + (2 * dist);
+                            queue.Enqueue(next);
+                        }
+                    }
+                }
+
+                return (null, int.MaxValue);
+
+                List<ICommand> RecreatePath()
+                {
+                    var path = new List<ICommand>();
+                    var cur = dst;
+                    while (!cur.Equals(src))
+                    {
+                        var from = cellData[cur.X, cur.Y, cur.Z].From;
+                        path.Add(
+                            new StraightMove
+                            {
+                                Diff = cur.Diff(from)
+                            });
+                        cur = from;
+                    }
+
+                    path.Reverse();
+                    return path;
+                }
             }
         }
     }
