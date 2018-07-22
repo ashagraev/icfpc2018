@@ -7,7 +7,7 @@
     // [BrokenStrategy]
     public abstract class BfsStrategyBase : IStrategy
     {
-        private readonly int maxBots = 2;
+        private readonly int maxBots = 1;
 
         public string Name => nameof(BfsStrategyBase);
 
@@ -147,7 +147,7 @@
                         interferedCells.Add(bot.Coord);
                     }
 
-                    List<Bot> newBots = null;
+                    var newBots = new List<Bot>();
 
                     if ((availablePositions.Count == 0) && (bots.Count == 1) && bots[0].Coord.IsAtStart())
                     {
@@ -171,7 +171,7 @@
                         {
                             idle = false;
                             var pc = bot.Coord;
-                            yield return MoveBot(bot, ref newBots);
+                            yield return MoveBot(bot, newBots);
 
                             // Console.WriteLine($"{pc} -> {bot.Coord}");
                         }
@@ -196,8 +196,9 @@
                         idleSteps = 0;
                     }
 
-                    if (newBots != null)
+                    if (newBots.Count > 0)
                     {
+                        // Console.WriteLine("HEY");
                         bots.AddRange(newBots);
                         bots = bots.OrderBy(bot => bot.Id).ToList();
                     }
@@ -206,7 +207,7 @@
 
             private bool CanMove(Bot bot)
             {
-                if (bot.NextCommand < bot.MoveCommands.Count)
+                if (bot.NextCommand < (bot.MoveCommands?.Count ?? 0))
                 {
                     switch (bot.MoveCommands[bot.NextCommand])
                     {
@@ -234,9 +235,9 @@
                 return IsFree(bot.Target.Value);
             }
 
-            private ICommand MoveBot(Bot bot, ref List<Bot> newBots)
+            private ICommand MoveBot(Bot bot, List<Bot> newBots)
             {
-                if (bot.NextCommand < bot.MoveCommands.Count)
+                if (bot.NextCommand < (bot.MoveCommands?.Count ?? 0))
                 {
                     switch (bot.MoveCommands[bot.NextCommand])
                     {
@@ -254,22 +255,24 @@
 
                 if (bot.FissionTarget != null)
                 {
-                    var m = bot.Seeds.Count;
-
-                    // TODO: add bot into newBots
-                    bot.FissionTarget = null;
-
-                    // TODO: coorddiff
-                    return new Fission
-                    {
-                        Diff = new CoordDiff
+                    interferedCells.Add(bot.FissionTarget.Value);
+                    var m = bot.Seeds.Count / 2;
+                    newBots.Add(
+                        new Bot()
                         {
-                            Dx = 0,
-                            Dy = 0,
-                            Dz = 0
-                        },
-                        M = m
+                            Id = bot.Seeds[0],
+                            Coord = bot.FissionTarget.Value,
+                            Seeds = bot.Seeds.Skip(1).Take(m).ToList()
+                        });
+                    bot.Seeds.RemoveRange(0, m + 1);
+
+                    var ret = new Fission
+                    {
+                        Diff = bot.FissionTarget.Value.Diff(bot.Coord),
+                        M = m,
                     };
+                    bot.FissionTarget = null;
+                    return ret;
                 }
 
                 if (bot.FillTarget != null)
@@ -304,15 +307,14 @@
                 bot.NextCommand = 0;
 
                 // temporary no multiplying
-                if (false && (bots.Count + (newBots?.Count ?? 0) < maxBots))
+                if (bots.Count + newBots.Count < maxBots &&
+                    bot.Seeds.Count > 0 &&
+                    availablePositions.Count(p => Depth(p) == currentDepth) > bots.Count * 2)
                 {
-                    foreach (var coord in bot.Coord.NearNeighbours())
+                    foreach (var coord in bot.Coord.NearNeighbours().Where(n => n.IsValid(model.R) && IsFree(n)))
                     {
-                        if (IsFree(coord))
-                        {
-                            bot.FissionTarget = coord;
-                            return;
-                        }
+                        bot.FissionTarget = coord;
+                        return;
                     }
                 }
 
