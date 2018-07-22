@@ -29,10 +29,11 @@
 
                 // Targets
                 public TCoord? FissionTarget;
+                public TCoord? FusionTarget;
                 public TCoord? FillTarget;
                 public TCoord? MoveTarget;
 
-                public TCoord? Target => FillTarget ?? FissionTarget ?? MoveTarget;
+                public TCoord? Target => FillTarget ?? FissionTarget ?? FusionTarget ?? MoveTarget;
 
                 // a trace to some cell near target
                 public List<ICommand> MoveCommands;
@@ -153,6 +154,7 @@
                     }
 
                     var newBots = new List<Bot>();
+                    int? deadBotId = null;
                     var filledCoords = new List<TCoord>();
 
                     if ((availablePositions.Count == 0) && (bots.Count == 1) && bots[0].Coord.IsAtStart())
@@ -177,7 +179,7 @@
                         {
                             idle = false;
                             var pc = bot.Coord;
-                            yield return MoveBot(bot, newBots, filledCoords);
+                            yield return MoveBot(bot, newBots, ref deadBotId, filledCoords);
 
                             // Console.WriteLine($"{pc} -> {bot.Coord}");
                         }
@@ -209,6 +211,15 @@
                         bots = bots.OrderBy(bot => bot.Id).ToList();
                     }
 
+                    if (deadBotId != null)
+                    {
+                        var liveBot = bots.First(IsPrimaryBotForFusion);
+                        var deadBot = bots.First(bot => bot.Id == deadBotId);
+                        liveBot.Seeds.Add(deadBot.Id);
+                        deadBot.Seeds.AddRange(deadBot.Seeds);
+                        bots = bots.Where(bot => bot.Id != deadBotId).ToList();
+                    }
+
                     foreach (var c in filledCoords)
                     {
                         state.Matrix[c.X, c.Y, c.Z] = 1;
@@ -226,6 +237,11 @@
 
             private bool CanMove(Bot bot)
             {
+                if (bot.FusionTarget != null)
+                {
+                    return true;
+                }
+
                 if (bot.NextCommand < (bot.MoveCommands?.Count ?? 0))
                 {
                     switch (bot.MoveCommands[bot.NextCommand])
@@ -254,7 +270,7 @@
                 return IsFree(bot.Target.Value);
             }
 
-            private ICommand MoveBot(Bot bot, List<Bot> newBots, List<TCoord> filledCoords)
+            private ICommand MoveBot(Bot bot, List<Bot> newBots, ref int? deadBotId, List<TCoord> filledCoords)
             {
                 if (bot.NextCommand < (bot.MoveCommands?.Count ?? 0))
                 {
@@ -294,6 +310,26 @@
                     return ret;
                 }
 
+                if (bot.FusionTarget != null)
+                {
+                    interferedCells.Add(bot.FusionTarget.Value);
+
+                    ICommand ret;
+                    var diff = bot.FusionTarget.Value.Diff(bot.Coord);
+                    if (IsPrimaryBotForFusion(bot))
+                    {
+                        ret = new FusionP { Diff = diff };
+                    }
+                    else
+                    {
+                        deadBotId = bot.Id;
+                        ret = new FusionS { Diff = diff };
+                    }
+
+                    bot.FusionTarget = null;
+                    return ret;
+                }
+
                 if (bot.FillTarget != null)
                 {
                     interferedCells.Add(bot.FillTarget.Value);
@@ -317,7 +353,7 @@
                 bot.FillTarget = null;
                 bot.MoveCommands = null;
                 bot.NextCommand = 0;
-                
+
                 if (bots.Count + newBots.Count < maxBots &&
                     bot.Seeds.Count > 0 &&
                     availablePositions.Count(p => Depth(p) == currentDepth) > bots.Count * 2)
@@ -331,23 +367,14 @@
 
                 if (availablePositions.Count == 0)
                 {
-                    bot.MoveTarget = new TCoord(0, 0, 0);
-                    foreach (var c in PathEnumerator.EnumerateReachablePaths(bot.Coord))
-                    {
-                        if (c.Coord.IsAtStart())
-                        {
-                            bot.MoveCommands = c.RecreatePath(bot.Coord);
-                            bot.NextCommand = 0;
-                            break;
-                        }
-                    }
+                    Fuse(bot);
 
                     if (bot.MoveCommands == null)
                     {
                         return;
                         throw new Exception("NO PATH TO ORIGIN!");
                     }
-                    
+
                     return;
                 }
 
@@ -375,6 +402,53 @@
                 }
             }
 
+            private void Fuse(Bot bot)
+            {
+                if (bots.Count == 0)
+                {
+                    throw new Exception("Where did the bots go?");
+                }
+
+                if (bots.Count == 1)
+                {
+                    // All done here.
+                    return;
+                }
+
+                var firstTwoBots = bots.OrderBy(x => x.Id).Take(2).ToArray();
+                var (primary, secondary) = (firstTwoBots[0], firstTwoBots[1]);
+
+                if (bot.Id != primary.Id && bot.Id != secondary.Id)
+                {
+                    // Our time has not come yet.
+                    return;
+                }
+
+                var primaryDest = new TCoord(0, 0, 0);
+                var secondaryDest = new TCoord(0, 1, 0);
+                if (primary.Coord.Equals(primaryDest) && secondary.Coord.Equals(secondaryDest))
+                {
+                    // Let's fuse!
+                    primary.FusionTarget = secondaryDest;
+                    secondary.FusionTarget = primaryDest;
+                    return;
+                }
+
+                var destCoord = bot.Id == primary.Id ? primaryDest : secondaryDest;
+
+                bot.MoveTarget = destCoord;
+                foreach (var c in PathEnumerator.EnumerateReachablePaths(bot.Coord))
+                {
+                    if (c.Coord.Equals(destCoord))
+                    {
+                        bot.MoveCommands = c.RecreatePath(bot.Coord);
+                        bot.NextCommand = 0;
+                        break;
+                    }
+                }
+            }
+
+            private bool IsPrimaryBotForFusion(Bot bot) => bot.Coord.IsAtStart();
             private bool IsFree(TCoord coord) => (state.M(coord) == 0) && !interferedCells.Contains(coord);
 
             private static void TraceMove(TCoord botCoord, StraightMove m, Action<TCoord> action)
