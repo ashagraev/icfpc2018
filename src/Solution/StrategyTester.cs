@@ -107,8 +107,11 @@
 
             stream.Seek(0, SeekOrigin.Begin);
             StreamReader reader = new StreamReader(stream);
-            Console.Write(reader.ReadToEnd());
-        }
+
+            lock (Lock) {
+                Console.Write(reader.ReadToEnd());
+            }
+    }
 
         private IEnumerable<TModel> LoadModels(string modelsDirectory)
         {
