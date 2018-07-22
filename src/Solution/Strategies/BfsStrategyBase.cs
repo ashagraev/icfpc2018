@@ -7,13 +7,13 @@
     // [BrokenStrategy]
     public abstract class BfsStrategyBase : IStrategy
     {
-        private readonly int maxBots = 0;
+        private readonly int maxBots = 2;
 
         public string Name => nameof(BfsStrategyBase);
 
         public List<ICommand> MakeTrace(TModel model)
         {
-            var impl = new Impl(model, 20);
+            var impl = new Impl(model, maxBots);
             return impl.MakeTrace().ToList();
         }
 
@@ -204,21 +204,18 @@
                     switch (bot.MoveCommands[bot.NextCommand])
                     {
                         case StraightMove m:
-                            var cur = bot.Coord;
-                            var dst = cur;
-                            dst.Apply(m.Diff);
-                            var step = new CoordDiff(Math.Sign(m.Diff.Dx), Math.Sign(m.Diff.Dy), Math.Sign(m.Diff.Dz));
-                            do
-                            {
-                                cur.Apply(step);
-                                if (!IsFree(cur))
+                            var good = true;
+                            TraceMove(
+                                bot.Coord,
+                                m,
+                                coord =>
                                 {
-                                    return false;
-                                }
-                            }
-                            while (!cur.Equals(dst));
-
-                            return true;
+                                    if (!IsFree(coord))
+                                    {
+                                        good = false;
+                                    }
+                                });
+                            return good;
                         case LMove m:
                             throw new NotImplementedException();
                             break;
@@ -237,17 +234,12 @@
                     switch (bot.MoveCommands[bot.NextCommand])
                     {
                         case StraightMove m:
+                            TraceMove(bot.Coord, m, coord => interferedCells.Add(coord));
                             bot.Coord.Apply(m.Diff);
                             ++bot.NextCommand;
-
-                            // TODO: mark interfered cells
                             return m;
                         case LMove m:
                             throw new NotImplementedException();
-
-                            // TODO: update coords and interferedCells
-                            ++bot.NextCommand;
-                            return m;
                         default:
                             throw new Exception("WTF");
                     }
@@ -255,7 +247,6 @@
 
                 if (bot.FissionTarget != null)
                 {
-                    throw new NotImplementedException();
                     var m = bot.Seeds.Count;
 
                     // TODO: add bot into newBots
@@ -322,14 +313,8 @@
                 {
                     bot.MoveTarget = new TCoord(0, 0, 0);
                     var (path, cost) = FindPath(bot.Coord, bot.MoveTarget.Value);
-                    if (path == null)
-                    {
-                        throw new Exception("NO PATH");
-                    }
-
-                    bot.MoveCommands = path;
+                    bot.MoveCommands = path ?? throw new Exception("NO PATH");
                     bot.NextCommand = 0;
-
                     return;
                 }
 
@@ -383,7 +368,7 @@
                 // Console.WriteLine($"COORDS: {bot.Coord}, TARGET: {bot.Target}, D: {(bot.Target == null ? -1 : depth[bot.Target.Value.X, bot.Target.Value.Y, bot.Target.Value.Z])}, M: {bot.MoveCommands?.Count}");
             }
 
-            private bool IsFree(TCoord coord) => !interferedCells.Contains(coord) && (state.Matrix[coord.X, coord.Y, coord.Z] == 0);
+            private bool IsFree(TCoord coord) => (state.Matrix[coord.X, coord.Y, coord.Z] == 0) && !interferedCells.Contains(coord);
 
             private double CalcRank(Bot bot, TCoord coord) => bot.Coord.Diff(coord).MLen();
 
@@ -408,7 +393,7 @@
                     var cur = queue.Dequeue();
                     if (cur.Equals(dst))
                     {
-                        return (RecreatePath(), cellData[cur.X, cur.Y, cur.Z].Cost);
+                        return (RecreatePath(), cellData[cur.X, cur.Y, cur.Z].Cost - depth[cur.X, cur.Y, cur.Z] * 65536);
                     }
 
                     var clen = Math.Min(cur.Diff(dst).CLen(), Constants.StraightMoveCorrection);
@@ -503,6 +488,20 @@
                     return path;
                 }
             }
+        }
+
+        private static void TraceMove(TCoord botCoord, StraightMove m, Action<TCoord> action)
+        {
+            var cur = botCoord;
+            var dst = cur;
+            dst.Apply(m.Diff);
+            var step = new CoordDiff(Math.Sign(m.Diff.Dx), Math.Sign(m.Diff.Dy), Math.Sign(m.Diff.Dz));
+            do
+            {
+                cur.Apply(step);
+                action(cur);
+            }
+            while (!cur.Equals(dst));
         }
     }
 }
