@@ -180,6 +180,8 @@ namespace Solution
 
         public readonly bool EnableValidation;
 
+        public int M(TCoord c) => Matrix[c.X, c.Y, c.Z];
+
         public TState(TModel model, bool enableValidation = false)
         {
             Model = model;
