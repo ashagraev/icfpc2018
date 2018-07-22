@@ -244,6 +244,7 @@ namespace Solution
             var botsCount = Bots.Count;
             var fusionPrimaries = new Dictionary<int, CoordDiff>();
             var fusionSecondaries = new Dictionary<int, CoordDiff>();
+            var volatiles = new Volatiles(EnableValidation);
             for (var botIdx = 0; botIdx < botsCount; ++botIdx)
             {
                 var command = commands.GetCommand(botIdx);
@@ -251,10 +252,19 @@ namespace Solution
 
                 switch (command)
                 {
-                    case Halt halt: break;
-                    case Wait wait: break;
+                    case Halt halt:
+                    {
+                        volatiles.Update(bot.Coord, bot);
+                        break;
+                    }
+                    case Wait wait:
+                    {
+                        volatiles.Update(bot.Coord, bot);
+                        break;
+                    }
                     case Flip flip:
                     {
+                        volatiles.Update(bot.Coord, bot);
                         if (Harmonics == EHarmonics.High)
                         {
                             Harmonics = EHarmonics.Low;
@@ -269,15 +279,15 @@ namespace Solution
 
                     case StraightMove move:
                     {
-                        MoveBot(bot, move.Diff);
+                        MoveBot(bot, move.Diff, volatiles);
                         Energy += 2 * move.Diff.MLen();
                         break;
                     }
 
                     case LMove lMove:
                     {
-                        MoveBot(bot, lMove.Diff1);
-                        MoveBot(bot, lMove.Diff2);
+                        MoveBot(bot, lMove.Diff1, volatiles);
+                        MoveBot(bot, lMove.Diff2, volatiles);
 
                         Energy += 2 * (lMove.Diff1.MLen() + 2 + lMove.Diff2.MLen());
 
@@ -300,6 +310,9 @@ namespace Solution
                         newBot.Coord = bot.Coord;
                         newBot.Coord.Apply(fission.Diff);
 
+                        volatiles.Update(bot.Coord, bot);
+                        volatiles.Update(newBot.Coord, newBot);
+
                         Bots.Add(newBot);
                         Energy += 24;
 
@@ -310,6 +323,9 @@ namespace Solution
                     {
                         var newCoord = bot.Coord;
                         newCoord.Apply(fill.Diff);
+
+                        volatiles.Update(bot.Coord, bot);
+                        volatiles.Update(newCoord, bot);
 
                         if (Matrix[newCoord.X, newCoord.Y, newCoord.Z] > 0)
                         {
@@ -335,6 +351,9 @@ namespace Solution
                     {
                         var newCoord = bot.Coord;
                         newCoord.Apply(@void.Diff);
+
+                        volatiles.Update(bot.Coord, bot);
+                        volatiles.Update(newCoord, bot);
 
                         if (Matrix[newCoord.X, newCoord.Y, newCoord.Z] > 0)
                         {
@@ -367,7 +386,7 @@ namespace Solution
 
             if (fusionPrimaries.Count > 0)
             {
-                Fuse(fusionPrimaries, fusionSecondaries);
+                Fuse(fusionPrimaries, fusionSecondaries, volatiles);
             }
 
             SortBots();
@@ -377,7 +396,7 @@ namespace Solution
 
         private bool this[TCoord c] => c.IsValid(Model.R) && Matrix[c.X, c.Y, c.Z] > 0;
 
-        private void MoveBot(TBot bot, CoordDiff diff)
+        private void MoveBot(TBot bot, CoordDiff diff, Volatiles volatiles)
         {
             if (EnableValidation)
             {
@@ -387,12 +406,14 @@ namespace Solution
                 end.Apply(diff);
                 while (!current.Equals(end))
                 {
+                    volatiles.Update(current, bot);
                     current.Apply(miniDiff);
                     if (this[current])
                     {
                         throw new InvalidStateException($"Coord {current} is occupied when moving bot {bot.Bid}");
                     }
                 }
+                volatiles.Update(end, bot);
             }
             bot.Coord.Apply(diff);
         }
@@ -412,7 +433,7 @@ namespace Solution
             return coord.ManhattenNeighbours().Any(x => IsGrounded(x, visited));
         }
 
-        private void Fuse(Dictionary<int, CoordDiff> fusionPrimaries, Dictionary<int, CoordDiff> fusionSecondaries)
+        private void Fuse(Dictionary<int, CoordDiff> fusionPrimaries, Dictionary<int, CoordDiff> fusionSecondaries, Volatiles volatiles)
         {
             if (fusionPrimaries.Count != fusionSecondaries.Count)
             {
@@ -443,6 +464,9 @@ namespace Solution
                         prim.Seeds.AddRange(sec.Seeds);
                         prim.Seeds.Sort();
 
+                        volatiles.Update(prim.Coord, prim);
+                        volatiles.Update(sec.Coord, sec);
+
                         Bots[secondaryIdx] = null;
 
                         Energy -= 24;
@@ -453,6 +477,29 @@ namespace Solution
             }
 
             Bots = Bots.Where(x => x != null).ToList();
+        }
+
+        private class Volatiles
+        {
+            public Volatiles(bool enableValidation)
+            {
+                if (enableValidation)
+                {
+                    Coords = new HashSet<TCoord>();
+                }
+            }
+
+            public void Update(TCoord coord, TBot bot)
+            {
+                if (Coords.Contains(coord))
+                {
+                    throw new InvalidStateException($"bot {bot.Bid} interferes with other bots at {coord}");
+                }
+
+                Coords.Add(coord);
+            }
+
+            private HashSet<TCoord> Coords;
         }
 
         private void SortBots() => Bots.Sort((x, y) => x.Bid.CompareTo(y.Bid));
