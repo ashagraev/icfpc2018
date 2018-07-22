@@ -9,8 +9,9 @@
     {
         private static void Main(string[] args)
         {
-            var modelName = "FA010";
-            var model = new TModel($"Data/Problems/{modelName}_tgt.mdl");
+            var modelName = "FD151";
+            var suffix = modelName.Contains("FA") ? "_tgt" : "src";
+            var model = new TModel($"Data/Problems/{modelName}_{suffix}.mdl");
 
             void TestStrategy(IStrategy strategy, bool saveTrace = false)
             {
@@ -28,14 +29,14 @@
 
                 if (saveTrace)
                 {
-                    File.WriteAllBytes("trace", TraceSerializer.Serialize(trace));
+                    File.WriteAllBytes("C://GitHub//icfpc2018//trace1", TraceSerializer.Serialize(trace));
                 }
             }
 
             //TestStrategy(new DumpCubeStrategy());
-            TestStrategy(new BetterCubeStrategy());
-            //TestStrategy(new TTraceReaderStrategy($"data/DefaultTraces"));
-            TestStrategy(new BfsStrategy(), true);
+            TestStrategy(new DumpCubeStrategy(), true);
+            TestStrategy(new TTraceReaderStrategy($"data/DefaultTraces"));
+            //TestStrategy(new BfsStrategy(), true);
         }
     }
 }
