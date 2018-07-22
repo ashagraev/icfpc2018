@@ -4,6 +4,7 @@
     using System.Collections.Generic;
     using System.Linq;
 
+    [BrokenStrategy]
     public class StupidFissionFusionStategy : IStrategy
     {
         public string Name => nameof(StupidFissionFusionStategy);

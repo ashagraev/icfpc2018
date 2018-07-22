@@ -22,6 +22,12 @@
         private TTraceReaderStrategy BaselineStrategy;
         private IStrategy[] Strategies;
         private Dictionary<string, long> StrategyStats;
+        private readonly string[] AllowedPrefixes;
+
+        public StrategyTester(string[] allowedPrefixes)
+        {
+            AllowedPrefixes = allowedPrefixes;
+        }
 
         public void Test(string modelsDirectory, string bestStrategiesDirectory, string defaultTracesDirectory, IEnumerable<IStrategy> strategiesEnum)
         {
@@ -65,56 +71,58 @@
 
             var traceFile = $"{BestStrategiesDirectory}/{model.Name}.nbt";
 
-            if (!Path.GetFileName(model.Name).StartsWith("FD"))
+            if (!AllowedPrefixes.Any(x => model.Name.StartsWith(x)))
             {
-                return;
+                writer.WriteLine($"Model {model.Name} is not allowed, copying the default trace");
+                File.Copy($"{DefaultTracesDirectory}/{Path.GetFileName(traceFile)}", traceFile, true);
             }
-
-            IStrategy[] allowedStrategies = Strategies;
-            if (!Path.GetFileName(model.Name).StartsWith("FA"))
+            else
             {
-                // TODO: remove this stupid hack when our strategies are able to destroy/reassemble models.
-                allowedStrategies = new IStrategy[1];
-                allowedStrategies[0] = new DumpCubeStrategy();
-//                File.Copy($"{DefaultTracesDirectory}/{Path.GetFileName(traceFile)}", traceFile, true);
-            }
-
-            writer.WriteLine($"{model.Name}");
-            var (best, _) = RunStrategy(model, BaselineStrategy, writer);
-            if (best != null) {
-                StrategyStats[BaselineStrategy.Name] += best.Value;
-            }
-
-            foreach (var strategy in allowedStrategies)
-            {
-                var (energy, commands) = RunStrategy(model, strategy, writer);
-
-                if (energy != null)
+                IStrategy[] allowedStrategies = Strategies;
+                if (!Path.GetFileName(model.Name).StartsWith("FA"))
                 {
-                    lock (Lock)
-                    {
-                        StrategyStats[strategy.Name] += energy.Value;
-                    }
+                    allowedStrategies = new IStrategy[1];
+                    allowedStrategies[0] = new DumpCubeStrategy();
                 }
 
-                if ((energy != null) && ((best == null) || (energy < best)))
+                writer.WriteLine($"{model.Name}");
+                var (best, _) = RunStrategy(model, BaselineStrategy, writer);
+                if (best != null)
                 {
-                    writer.WriteLine("  NEW BEST!!!");
-                    best = energy;
+                    StrategyStats[BaselineStrategy.Name] += best.Value;
+                }
 
-                    File.Delete(traceFile);
-                    File.Delete($"{traceFile}.tmp");
+                foreach (var strategy in allowedStrategies)
+                {
+                    var (energy, commands) = RunStrategy(model, strategy, writer);
 
-                    using (var f = File.OpenWrite($"{traceFile}.tmp"))
+                    if (energy != null)
                     {
-                        f.Write(TraceSerializer.Serialize(commands));
+                        lock (Lock)
+                        {
+                            StrategyStats[strategy.Name] += energy.Value;
+                        }
                     }
 
-                    File.Move($"{traceFile}.tmp", traceFile);
-
-                    using (var f = File.OpenWrite($"{traceFile}.winner.txt"))
+                    if ((energy != null) && ((best == null) || (energy < best)))
                     {
-                        f.Write(Encoding.UTF8.GetBytes($"Strategy: {strategy.Name}"));
+                        writer.WriteLine("  NEW BEST!!!");
+                        best = energy;
+
+                        File.Delete(traceFile);
+                        File.Delete($"{traceFile}.tmp");
+
+                        using (var f = File.OpenWrite($"{traceFile}.tmp"))
+                        {
+                            f.Write(TraceSerializer.Serialize(commands));
+                        }
+
+                        File.Move($"{traceFile}.tmp", traceFile);
+
+                        using (var f = File.OpenWrite($"{traceFile}.winner.txt"))
+                        {
+                            f.Write(Encoding.UTF8.GetBytes($"Strategy: {strategy.Name}"));
+                        }
                     }
                 }
             }

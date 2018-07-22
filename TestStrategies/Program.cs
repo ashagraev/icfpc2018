@@ -2,6 +2,7 @@
 {
     using System;
     using System.Linq;
+    using System.Threading.Tasks.Sources;
 
     using Solution;
     using Solution.Strategies;
@@ -10,6 +11,7 @@
     {
         static void Main(string[] args)
         {
+            var allowedPrefixes = args.Length > 0 ? args : new[] { "FA" };
             var strategies = AppDomain.CurrentDomain.GetAssemblies()
                 .SelectMany(assembly => assembly.GetTypes())
                 .Where(
@@ -21,7 +23,7 @@
                 .Select(CreateStrategy)
                 .Where(strategy => strategy != null);
 
-            StrategyTester tester = new StrategyTester();
+            StrategyTester tester = new StrategyTester(allowedPrefixes);
             tester.Test("Data/Problems", "Data/BestTraces", "Data/DefaultTraces", strategies);
         }
 
