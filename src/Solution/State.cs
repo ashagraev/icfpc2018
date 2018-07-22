@@ -178,9 +178,12 @@ namespace Solution
         public int[,,] Matrix;
         public TModel Model;
 
-        public TState(TModel model)
+        public readonly bool EnableValidation;
+
+        public TState(TModel model, bool enableValidation = false)
         {
             Model = model;
+            EnableValidation = enableValidation;
             Matrix = new int[Model.R, Model.R, Model.R];
 
             var bot = new TBot
@@ -315,6 +318,13 @@ namespace Solution
                         else
                         {
                             Matrix[newCoord.X, newCoord.Y, newCoord.Z] = 1;
+                            if (EnableValidation)
+                            {
+                                if (Harmonics == EHarmonics.Low && !IsGrounded(newCoord, new HashSet<TCoord>()))
+                                {
+                                    throw new InvalidStateException($"{newCoord} is not grounded");
+                                }
+                            }
                             Energy += 12;
                         }
 
@@ -363,6 +373,21 @@ namespace Solution
             SortBots();
 
             commands.Advance(botsCount);
+        }
+
+        private bool IsGrounded(TCoord coord, HashSet<TCoord> visited)
+        {
+            if (visited.Contains(coord) || !coord.IsValid(Model.R) || Matrix[coord.X, coord.Y, coord.Z] == 0)
+            {
+                return false;
+            }
+            visited.Add(coord);
+            if (coord.Y == 0)
+            {
+                return true;
+            }
+
+            return coord.ManhattenNeighbours().Any(x => IsGrounded(x, visited));
         }
 
         private void Fuse(Dictionary<int, CoordDiff> fusionPrimaries, Dictionary<int, CoordDiff> fusionSecondaries)

@@ -11,6 +11,12 @@
     public class ValidationTest
     {
         [TestMethod]
+        public void TestValidTrace()
+        {
+            LoadTrace("FA055.nbt");
+        }
+
+        [TestMethod]
         public void TestFloating()
         {
             Assert.ThrowsException<InvalidStateException>(() => LoadTrace("floating.nbt"));
@@ -37,7 +43,7 @@
         private void LoadTrace(string traceFile)
         {
             var trace = TraceReader.Read(File.ReadAllBytes(traceFile));
-            var state = new TState(new TModel("FA055_tgt.mdl"));
+            var state = new TState(new TModel("FA055_tgt.mdl"), true);
             var reader = new TCommandsReader(trace);
             while (!reader.AtEnd())
             {
