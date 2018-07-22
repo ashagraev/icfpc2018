@@ -21,6 +21,9 @@
             var models = LoadModels(modelsDirectory);
             foreach (var model in models)
             {
+                var stream = new MemoryStream();
+                var writer = new StreamWriter(stream);
+
                 var traceFile = $"{bestStrategiesDirectory}/{model.Name}.nbt";
 
                 if (!Path.GetFileName(model.Name).StartsWith("FA"))
@@ -30,12 +33,12 @@
                     continue;
                 }
 
-                Console.WriteLine($"{model.Name}");
-                var (best, _) = RunStrategy(model, bestStrategy);
+                writer.WriteLine($"{model.Name}");
+                var (best, _) = RunStrategy(model, bestStrategy, writer);
 
                 foreach (var strategy in strategies)
                 {
-                    var (energy, commands) = RunStrategy(model, strategy);
+                    var (energy, commands) = RunStrategy(model, strategy, writer);
 
                     if (energy != null)
                     {
@@ -51,7 +54,7 @@
 
                     if ((energy != null) && ((best == null) || (energy < best)))
                     {
-                        Console.WriteLine("  NEW BEST!!!");
+                        writer.WriteLine("  NEW BEST!!!");
                         best = energy;
 
                         File.Delete(traceFile);
@@ -70,17 +73,23 @@
                         }
                     }
                 }
+
+                writer.Flush();
+
+                stream.Seek(0, SeekOrigin.Begin);
+                StreamReader reader = new StreamReader(stream);
+                Console.Write(reader.ReadToEnd());
             }
 
             var baselineStrategy = new TTraceReaderStrategy("Data/DefaultTraces");
-
+            /*
             foreach (IStrategy s in strategies)
             {
                 Console.WriteLine(s.Name);
                 Console.WriteLine(strategyStats[s.Name]);
                 Console.WriteLine((float) strategyStats[s.Name] / strategyStats[baselineStrategy.Name]);
                 Console.WriteLine("");
-            }
+            }*/
 
             MakeSubmission(bestStrategiesDirectory, defaultTracesDirectory);
         }
@@ -96,9 +105,9 @@
             }
         }
 
-        private static (long? energy, List<ICommand> commands) RunStrategy(TModel model, IStrategy strategy)
+        private static (long? energy, List<ICommand> commands) RunStrategy(TModel model, IStrategy strategy, StreamWriter writer)
         {
-            Console.Write($"  {strategy.Name}: ");
+            writer.Write($"  {strategy.Name}: ");
 
             try
             {
@@ -114,24 +123,24 @@
 
                     if (step % 1000000 == 0)
                     {
-                        Console.Write(".");
+                        writer.Write(".");
                     }
                 }
 
-                Console.Write(state.Energy);
+                writer.Write(state.Energy);
 
                 if (!state.HasValidFinalState())
                 {
-                    Console.WriteLine(" !!FAIL!! ");
+                    writer.WriteLine(" !!FAIL!! ");
                     return (null, null);
                 }
 
-                Console.WriteLine();
+                writer.WriteLine();
                 return (state.Energy, commands);
             }
             catch (Exception e)
             {
-                Console.WriteLine($"exception: {e}");
+                writer.WriteLine($"exception: {e}");
                 return (null, null);
             }
         }
