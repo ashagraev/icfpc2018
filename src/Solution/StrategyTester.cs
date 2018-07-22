@@ -21,64 +21,7 @@
             var models = LoadModels(modelsDirectory);
             foreach (var model in models)
             {
-                var stream = new MemoryStream();
-                var writer = new StreamWriter(stream);
-
-                var traceFile = $"{bestStrategiesDirectory}/{model.Name}.nbt";
-
-                if (!Path.GetFileName(model.Name).StartsWith("FA"))
-                {
-                    // TODO: remove this stupid hack when our strategies are able to destroy/reassemble models.
-                    File.Copy($"{defaultTracesDirectory}/{Path.GetFileName(traceFile)}", traceFile, true);
-                    continue;
-                }
-
-                writer.WriteLine($"{model.Name}");
-                var (best, _) = RunStrategy(model, bestStrategy, writer);
-
-                foreach (var strategy in strategies)
-                {
-                    var (energy, commands) = RunStrategy(model, strategy, writer);
-
-                    if (energy != null)
-                    {
-                        if (strategyStats.ContainsKey(strategy.Name))
-                        {
-                            strategyStats[strategy.Name] += energy.Value;
-                        }
-                        else
-                        {
-                            strategyStats[strategy.Name] = energy.Value;
-                        }
-                    }
-
-                    if ((energy != null) && ((best == null) || (energy < best)))
-                    {
-                        writer.WriteLine("  NEW BEST!!!");
-                        best = energy;
-
-                        File.Delete(traceFile);
-                        File.Delete($"{traceFile}.tmp");
-
-                        using (var f = File.OpenWrite($"{traceFile}.tmp"))
-                        {
-                            f.Write(TraceSerializer.Serialize(commands));
-                        }
-
-                        File.Move($"{traceFile}.tmp", traceFile);
-
-                        using (var f = File.OpenWrite($"{traceFile}.winner.txt"))
-                        {
-                            f.Write(Encoding.UTF8.GetBytes($"Strategy: {strategy.Name}"));
-                        }
-                    }
-                }
-
-                writer.Flush();
-
-                stream.Seek(0, SeekOrigin.Begin);
-                StreamReader reader = new StreamReader(stream);
-                Console.Write(reader.ReadToEnd());
+                ProcessModel(bestStrategiesDirectory, defaultTracesDirectory, model, bestStrategy, strategies, strategyStats);
             }
 
             var baselineStrategy = new TTraceReaderStrategy("Data/DefaultTraces");
@@ -92,6 +35,74 @@
             }*/
 
             MakeSubmission(bestStrategiesDirectory, defaultTracesDirectory);
+        }
+
+        private static void ProcessModel(
+            string bestStrategiesDirectory,
+            string defaultTracesDirectory,
+            TModel model,
+            TTraceReaderStrategy bestStrategy,
+            IStrategy[] strategies,
+            Dictionary<string, long> strategyStats)
+        {
+            var stream = new MemoryStream();
+            var writer = new StreamWriter(stream);
+
+            var traceFile = $"{bestStrategiesDirectory}/{model.Name}.nbt";
+
+            if (!Path.GetFileName(model.Name).StartsWith("FA"))
+            {
+                // TODO: remove this stupid hack when our strategies are able to destroy/reassemble models.
+                File.Copy($"{defaultTracesDirectory}/{Path.GetFileName(traceFile)}", traceFile, true);
+                return;
+            }
+
+            writer.WriteLine($"{model.Name}");
+            var (best, _) = RunStrategy(model, bestStrategy, writer);
+
+            foreach (var strategy in strategies)
+            {
+                var (energy, commands) = RunStrategy(model, strategy, writer);
+
+                if (energy != null)
+                {
+                    if (strategyStats.ContainsKey(strategy.Name))
+                    {
+                        strategyStats[strategy.Name] += energy.Value;
+                    }
+                    else
+                    {
+                        strategyStats[strategy.Name] = energy.Value;
+                    }
+                }
+
+                if ((energy != null) && ((best == null) || (energy < best)))
+                {
+                    writer.WriteLine("  NEW BEST!!!");
+                    best = energy;
+
+                    File.Delete(traceFile);
+                    File.Delete($"{traceFile}.tmp");
+
+                    using (var f = File.OpenWrite($"{traceFile}.tmp"))
+                    {
+                        f.Write(TraceSerializer.Serialize(commands));
+                    }
+
+                    File.Move($"{traceFile}.tmp", traceFile);
+
+                    using (var f = File.OpenWrite($"{traceFile}.winner.txt"))
+                    {
+                        f.Write(Encoding.UTF8.GetBytes($"Strategy: {strategy.Name}"));
+                    }
+                }
+            }
+
+            writer.Flush();
+
+            stream.Seek(0, SeekOrigin.Begin);
+            StreamReader reader = new StreamReader(stream);
+            Console.Write(reader.ReadToEnd());
         }
 
         private static IEnumerable<TModel> LoadModels(string modelsDirectory)
