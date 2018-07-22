@@ -412,7 +412,7 @@
 
                     return;
                 }
-                
+
                 foreach (var c in PathEnumerator.EnumerateReachablePaths(bot.Coord, currentDepth))
                 {
                     if (Depth(c.Coord) < currentDepth)
@@ -479,6 +479,10 @@
                 }
 
                 var destCoord = bot.Id == primary.Id ? primaryDest : secondaryDest;
+                if (bot.Coord.Equals(destCoord))
+                {
+                    return;
+                }
 
                 bot.MoveTarget = destCoord;
                 foreach (var c in PathEnumerator.EnumerateReachablePaths(bot.Coord, 1000))
