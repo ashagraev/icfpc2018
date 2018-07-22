@@ -9,7 +9,7 @@
     {
         private static void Main(string[] args)
         {
-            var modelName = "FD151";
+            var modelName = "FA001";
             var suffix = modelName.Contains("FA") ? "_tgt" : "src";
             var model = new TModel($"Data/Problems/{modelName}_{suffix}.mdl");
 
