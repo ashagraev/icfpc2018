@@ -7,6 +7,7 @@
     using System.Linq;
     using System.Security.Cryptography;
     using System.Text;
+    using System.Threading.Tasks;
 
     using Solution.Strategies;
 
@@ -14,55 +15,58 @@
     {
         private Object Lock = new Object();
 
+        private string BestStrategiesDirectory;
+        private string DefaultTracesDirectory;
+        private TTraceReaderStrategy BestStrategy;
+        private IStrategy[] Strategies;
+        private Dictionary<string, long> StrategyStats;
+
         public void Test(string modelsDirectory, string bestStrategiesDirectory, string defaultTracesDirectory, IEnumerable<IStrategy> strategiesEnum)
         {
-            var strategyStats = new Dictionary<String, long>();
-            var strategies = strategiesEnum.ToArray();
-            var bestStrategy = new TTraceReaderStrategy("Data/BestTraces");
+            BestStrategiesDirectory = bestStrategiesDirectory;
+            DefaultTracesDirectory = defaultTracesDirectory;
+
+            StrategyStats = new Dictionary<String, long>();
+            Strategies = strategiesEnum.ToArray();
+            BestStrategy = new TTraceReaderStrategy("Data/BestTraces");
 
             var models = LoadModels(modelsDirectory);
             foreach (var model in models)
             {
-                ProcessModel(bestStrategiesDirectory, defaultTracesDirectory, model, bestStrategy, strategies, strategyStats);
+                ProcessModel(model);
             }
 
             var baselineStrategy = new TTraceReaderStrategy("Data/DefaultTraces");
 
-            foreach (IStrategy s in strategies)
+            foreach (IStrategy s in Strategies)
             {
                 Console.WriteLine(s.Name);
-                Console.WriteLine(strategyStats[s.Name]);
-                Console.WriteLine((float) strategyStats[s.Name] / strategyStats[baselineStrategy.Name]);
+                Console.WriteLine(StrategyStats[s.Name]);
+                Console.WriteLine((float) StrategyStats[s.Name] / StrategyStats[baselineStrategy.Name]);
                 Console.WriteLine("");
             }
 
             MakeSubmission(bestStrategiesDirectory, defaultTracesDirectory);
         }
 
-        private void ProcessModel(
-            string bestStrategiesDirectory,
-            string defaultTracesDirectory,
-            TModel model,
-            TTraceReaderStrategy bestStrategy,
-            IStrategy[] strategies,
-            Dictionary<string, long> strategyStats)
+        private void ProcessModel(TModel model)
         {
             var stream = new MemoryStream();
             var writer = new StreamWriter(stream);
 
-            var traceFile = $"{bestStrategiesDirectory}/{model.Name}.nbt";
+            var traceFile = $"{BestStrategiesDirectory}/{model.Name}.nbt";
 
             if (!Path.GetFileName(model.Name).StartsWith("FA"))
             {
                 // TODO: remove this stupid hack when our strategies are able to destroy/reassemble models.
-                File.Copy($"{defaultTracesDirectory}/{Path.GetFileName(traceFile)}", traceFile, true);
+                File.Copy($"{DefaultTracesDirectory}/{Path.GetFileName(traceFile)}", traceFile, true);
                 return;
             }
 
             writer.WriteLine($"{model.Name}");
-            var (best, _) = RunStrategy(model, bestStrategy, writer);
+            var (best, _) = RunStrategy(model, BestStrategy, writer);
 
-            foreach (var strategy in strategies)
+            foreach (var strategy in Strategies)
             {
                 var (energy, commands) = RunStrategy(model, strategy, writer);
 
@@ -70,13 +74,13 @@
                 {
                     lock (Lock)
                     {
-                        if (strategyStats.ContainsKey(strategy.Name))
+                        if (StrategyStats.ContainsKey(strategy.Name))
                         {
-                            strategyStats[strategy.Name] += energy.Value;
+                            StrategyStats[strategy.Name] += energy.Value;
                         }
                         else
                         {
-                            strategyStats[strategy.Name] = energy.Value;
+                            StrategyStats[strategy.Name] = energy.Value;
                         }
                     }
                 }
