@@ -70,7 +70,7 @@
             }
             StrategyStats[BaselineStrategy.Name] = 0;
 
-            var tasks = LoadTasks(modelsDirectory).OrderBy(t => t.Src.NumFilled + t.Tgt.NumFilled);
+            var tasks = LoadTasks(modelsDirectory).OrderBy(t => t.Src.R * t.Src.R * t.Src.R * (long)(t.Src.NumFilled + t.Tgt.NumFilled));
             tasks
                 .AsParallel()
                 .WithDegreeOfParallelism(15)
@@ -109,11 +109,6 @@
             else
             {
                 IStrategy[] allowedStrategies = Strategies;
-                if (!Path.GetFileName(task.Name).StartsWith("FA"))
-                {
-                    allowedStrategies = new IStrategy[1];
-                    allowedStrategies[0] = new DumpCubeStrategy();
-                }
 
                 writer.WriteLine($"{task.Name}");
                 var (best, _) = RunStrategy(task, BaselineStrategy, writer);

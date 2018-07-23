@@ -5,6 +5,10 @@
     <TargetFramework>netcoreapp2.1</TargetFramework>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <OutputPath>bin2\Release\netcoreapp2.1\</OutputPath>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\src\Solution\Solution.csproj" />
   </ItemGroup>

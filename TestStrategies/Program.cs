@@ -20,7 +20,7 @@
                         !type.IsAbstract &&
                         typeof(IStrategy).IsAssignableFrom(type) &&
                         type.GetCustomAttributes(typeof(BrokenStrategy), true).Length == 0)
-                .Where(type => type != typeof(BfsStrategy))
+                .Where(type => type == typeof(BfsStrategy))
                 .Select(CreateStrategy)
                 .Where(strategy => strategy != null);
 
