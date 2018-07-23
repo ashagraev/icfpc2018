@@ -7,6 +7,7 @@
     {
         string Name { get; }
         List<ICommand> MakeTrace(TModel model);
+        List<ICommand> MakeReassemblyTrace(TModel srcModel, TModel tgtModel);
     }
 
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]

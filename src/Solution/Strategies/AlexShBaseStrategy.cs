@@ -6,6 +6,11 @@
     [BrokenStrategy]
     public class AlexShBaseStrategy : IStrategy
     {
+        public List<ICommand> MakeReassemblyTrace(TModel srcModel, TModel tgtModel)
+        {
+            return new List<ICommand>();
+        }
+
         public static void AddTransition(List<ICommand> commands, TCoord current, TCoord target, TModel model, bool doFill)
         {
             Fill fill = new Fill();

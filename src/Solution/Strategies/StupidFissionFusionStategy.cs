@@ -9,6 +9,11 @@
     {
         public string Name => nameof(StupidFissionFusionStategy);
 
+        public List<ICommand> MakeReassemblyTrace(TModel srcModel, TModel tgtModel)
+        {
+            return new List<ICommand>();
+        }
+
         public List<ICommand> MakeTrace(TModel model)
         {
             var rangeX = new Range();

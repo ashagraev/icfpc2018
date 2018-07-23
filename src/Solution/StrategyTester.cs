@@ -45,8 +45,11 @@
             }
             StrategyStats[BaselineStrategy.Name] = 0;
 
-            var models = LoadModels(modelsDirectory);
-            Parallel.ForEach<TModel>(models, new ParallelOptions { MaxDegreeOfParallelism = 15 }, ProcessModel);
+   //         var models = LoadModels(modelsDirectory);
+            var reassemblyModels = LoadReassemblyModels(modelsDirectory);
+
+        //    Parallel.ForEach<TModel>(models, new ParallelOptions { MaxDegreeOfParallelism = 15 }, ProcessModel);
+            Parallel.ForEach<KeyValuePair<TModel, TModel>>(reassemblyModels, new ParallelOptions { MaxDegreeOfParallelism = 15 }, ProcessReassembly);
 
             foreach (IStrategy s in Strategies)
             {
@@ -135,7 +138,82 @@
             lock (Lock) {
                 Console.Write(reader.ReadToEnd());
             }
-    }
+        }
+
+        private void ProcessReassembly(KeyValuePair<TModel, TModel> srcAndDst)
+        {
+            var cubeStrategy = new DumpCubeStrategy();
+
+            var stream = new MemoryStream();
+            var writer = new StreamWriter(stream);
+
+            var traceFile = $"{BestStrategiesDirectory}/{srcAndDst.Key.Name}.nbt";
+
+            var (baseline, _) = RunStrategy(srcAndDst.Key, srcAndDst.Value, BaselineStrategy, writer);
+            var (dumpCube, commands) = RunStrategy(srcAndDst.Key, srcAndDst.Value, cubeStrategy, writer);
+
+            if (dumpCube == null || baseline == null)
+            {
+                return;
+            }
+
+            StrategyStats[BaselineStrategy.Name] += baseline.Value;
+            StrategyStats[cubeStrategy.Name] += dumpCube.Value;
+
+            if (dumpCube.Value < baseline.Value)
+            {
+                writer.WriteLine("  NEW BEST!!!");
+
+                File.Delete(traceFile);
+                File.Delete($"{traceFile}.tmp");
+
+                using (var f = File.OpenWrite($"{traceFile}.tmp"))
+                {
+                    f.Write(TraceSerializer.Serialize(commands));
+                }
+
+                File.Move($"{traceFile}.tmp", traceFile);
+
+                using (var f = File.OpenWrite($"{traceFile}.winner.txt"))
+                {
+                    f.Write(Encoding.UTF8.GetBytes($"Strategy: {cubeStrategy.Name}"));
+                }
+            }
+
+            writer.Flush();
+
+            stream.Seek(0, SeekOrigin.Begin);
+            StreamReader reader = new StreamReader(stream);
+
+            lock (Lock)
+            {
+                Console.Write(reader.ReadToEnd());
+            }
+        }
+
+        private List<KeyValuePair<TModel, TModel>> LoadReassemblyModels(string modelsDirectory)
+        {
+            List<KeyValuePair<TModel, TModel>> result = new List<KeyValuePair<TModel, TModel>>();
+
+            foreach (var file in Directory.EnumerateFiles(modelsDirectory))
+            {
+                string name = Path.GetFileNameWithoutExtension(file);
+                if (!name.Contains("FR") || !name.Contains("_tgt"))
+                {
+                    continue;
+                }
+
+                string srcPath = file.Replace("_tgt", "_src");
+
+                TModel srcModel = new TModel(srcPath);
+                TModel tgtModel = new TModel(file);
+
+                result.Add(new KeyValuePair<TModel, TModel>(srcModel, tgtModel));
+            }
+
+            result.Reverse();
+            return result;
+        }
 
         private List<TModel> LoadModels(string modelsDirectory)
         {
@@ -150,7 +228,6 @@
             //      result.Reverse();
             return result;
         }
-
         private (long? energy, List<ICommand> commands) RunStrategy(TModel model, IStrategy strategy, StreamWriter writer)
         {
             writer.Write($"  {strategy.Name}: ");
@@ -191,6 +268,45 @@
             }
         }
 
+        private (long? energy, List<ICommand> commands) RunStrategy(TModel srcModel, TModel tgtModel, IStrategy strategy, StreamWriter writer)
+        {
+            writer.Write($"  {strategy.Name}: ");
+
+            try
+            {
+                var commands = strategy.MakeReassemblyTrace(srcModel, tgtModel);
+
+                var state = new TState(srcModel);
+                var step = 0;
+                var commandsReader = new TCommandsReader(commands);
+                while (!commandsReader.AtEnd())
+                {
+                    state.Step(commandsReader);
+                    step += 1;
+
+                    if (step % 1000000 == 0)
+                    {
+                        writer.Write(".");
+                    }
+                }
+
+                writer.Write(state.Energy);
+
+                if (!state.HasValidFinalState(tgtModel))
+                {
+                    writer.WriteLine(" !!FAIL!! ");
+                    return (null, null);
+                }
+
+                writer.WriteLine();
+                return (state.Energy, commands);
+            }
+            catch (Exception e)
+            {
+                writer.WriteLine($"exception: {e}");
+                return (null, null);
+            }
+        }
         private void MakeSubmission(string bestStrategiesDirectory, string defaultTracesDirectory)
         {
             var submissionDirectory = "SubmissionContents";

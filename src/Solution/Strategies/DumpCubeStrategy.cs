@@ -2,6 +2,8 @@
 {
     using System;
     using System.Collections.Generic;
+    using System.Linq;
+    using System.Net.Sockets;
 
     using Void = Solution.Void;
 
@@ -44,6 +46,47 @@
                     for (var z = 0; z < R; ++z)
                     {
                         if (model[x, y, z] > 0)
+                        {
+                            MaxY = Math.Max(MaxY, y);
+
+                            thisLevelBorders.MinX = Math.Min(thisLevelBorders.MinX, x);
+                            thisLevelBorders.MaxX = Math.Max(thisLevelBorders.MaxX, x);
+
+                            thisLevelBorders.MinZ = Math.Min(thisLevelBorders.MinZ, z);
+                            thisLevelBorders.MaxZ = Math.Max(thisLevelBorders.MaxZ, z);
+                        }
+                    }
+                }
+
+                if (thisLevelBorders.MaxX == thisLevelBorders.MinX)
+                {
+                    ++thisLevelBorders.MaxX;
+                    --thisLevelBorders.MinX;
+                }
+                if (thisLevelBorders.MaxZ == thisLevelBorders.MinZ)
+                {
+                    ++thisLevelBorders.MaxZ;
+                    --thisLevelBorders.MinZ;
+                }
+
+                LevelBorders.Add(thisLevelBorders);
+            }
+        }
+
+        public TDumpCubeTraverse(TModel srcModel, TModel dstModel)
+        {
+            R = srcModel.R;
+
+            LevelBorders = new List<TBorders>();
+
+            for (var y = 0; y < R; ++y)
+            {
+                var thisLevelBorders = new TBorders();
+                for (var x = 0; x < R; ++x)
+                {
+                    for (var z = 0; z < R; ++z)
+                    {
+                        if (srcModel[x, y, z] > 0 || dstModel[x, y, z] > 0)
                         {
                             MaxY = Math.Max(MaxY, y);
 
@@ -259,6 +302,7 @@
             Current.Apply(Direction);
             return Current;
         }
+
         public TCoord Next()
         {
             if (LetGoBack || (Current.Y > MaxY + 1))
@@ -422,6 +466,8 @@
                 ((Void)modifyCommand).Diff.Dy = -1;
             }
 
+      //      TState state = new TState(model);
+
             var result = new List<ICommand>();
 
             result.Add(new Flip());
@@ -441,10 +487,22 @@
                 var move = new StraightMove();
                 move.Diff = dumpCureTraverse.GetDirection();
                 result.Add(move);
+ //               {
+ //                   List<ICommand> ss = new List<ICommand>();
+   //                 ss.Add(move);
+   //                 TCommandsReader cr = new TCommandsReader(ss);
+   //                 state.Step(cr);
+   //             }
 
                 if ((next.Y > 0) && (model[next.X, next.Y - 1, next.Z] > 0))
                 {
                     result.Add(modifyCommand);
+      //              {
+      //                  List<ICommand> ss = new List<ICommand>();
+       //                 ss.Add(move);
+       //                 TCommandsReader cr = new TCommandsReader(ss);
+       //                 state.Step(cr);
+        //            }
                 }
 
                 current = next;
@@ -452,7 +510,112 @@
             }
 
             result.Add(new Flip());
+            result.Add(new Halt());
 
+            return result;
+        }
+
+        public List<ICommand> MakeReassemblyTrace(TModel srcModel, TModel tgtModel)
+        {
+            Fill doFill = new Fill();
+            doFill.Diff.Dy = -1;
+
+            Void doVoid = new Void();
+            doVoid.Diff.Dy = -1;
+
+            var result = new List<ICommand>();
+
+            result.Add(new Flip());
+
+            var current = new TCoord();
+            var dumpCureTraverse = new TDumpCubeTraverse(srcModel, tgtModel);
+
+            TState state = new TState(srcModel);
+            List<ICommand> ss = new List<ICommand>();
+
+            var iteration = 0;
+            while ((iteration == 0) || !current.IsAtStart())
+            {
+                var next = dumpCureTraverse.Next();
+
+                if (srcModel[next] > 0)
+                {
+                    Void curVoid = new Void();
+                    curVoid.Diff = dumpCureTraverse.GetDirection();
+                    result.Add(curVoid);
+
+                    {
+                        if (ss.Count == 0)
+                        {
+                            ss.Add(curVoid);
+                        }
+                        else
+                        {
+                            ss[0] = curVoid;
+                        }
+                        ss.Add(curVoid);
+                        TCommandsReader cr = new TCommandsReader(ss);
+                        state.Step(cr);
+                    }
+                }
+
+                var move = new StraightMove();
+                move.Diff = dumpCureTraverse.GetDirection();
+                result.Add(move);
+
+                {
+                    if (ss.Count == 0)
+                    {
+                        ss.Add(move);
+                    }
+                    else
+                    {
+                        ss[0] = move;
+                    }
+
+                    TCommandsReader cr = new TCommandsReader(ss);
+                    state.Step(cr);
+                }
+
+                if ((next.Y > 0) && (tgtModel[next.X, next.Y - 1, next.Z] > 0) && state.Matrix[next.X, next.Y - 1, next.Z] == 0)
+                {
+                    result.Add(doFill);
+                    {
+                        if (ss.Count == 0)
+                        {
+                            ss.Add(doFill);
+                        }
+                        else
+                        {
+                            ss[0] = doFill;
+                        }
+                        TCommandsReader cr = new TCommandsReader(ss);
+                        state.Step(cr);
+                    }
+                }
+                if ((next.Y > 0) && (tgtModel[next.X, next.Y - 1, next.Z] == 0) && state.Matrix[next.X, next.Y - 1, next.Z] > 0)
+                {
+                    result.Add(doVoid);
+                    {
+                        if (ss.Count == 0)
+                        {
+                            ss.Add(doVoid);
+                        }
+                        else
+                        {
+                            ss[0] = doVoid;
+                        }
+
+                        TCommandsReader cr = new TCommandsReader(ss);
+                        state.Step(cr);
+                    }
+                }
+
+                current = next;
+                ++iteration;
+            }
+
+            result.Add(new Flip());
             result.Add(new Halt());
 
             return result;

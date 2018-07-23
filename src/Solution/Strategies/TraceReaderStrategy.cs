@@ -26,5 +26,13 @@
                 ? TraceReader.Read(traceFile)
                 : new List<ICommand>();
         }
+
+        public List<ICommand> MakeReassemblyTrace(TModel srcModel, TModel tgtModel)
+        {
+            var traceFile = $"{tracesDir}/{srcModel.Name}.nbt";
+            return File.Exists(traceFile)
+                       ? TraceReader.Read(traceFile)
+                       : new List<ICommand>();
+        }
     }
 }

@@ -13,6 +13,11 @@
 
         public virtual string Name => nameof(BfsStrategyBase);
 
+        public List<ICommand> MakeReassemblyTrace(TModel srcModel, TModel tgtModel)
+        {
+            return new List<ICommand>();
+        }
+
         public List<ICommand> MakeTrace(TModel model)
         {
             var impl = new Impl(model, maxBots);

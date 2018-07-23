@@ -249,9 +249,37 @@ namespace Solution
             return (Bots.Count == 1) && Bots[0].Coord.IsAtStart() && (Harmonics == EHarmonics.Low);
         }
 
+        private bool HasValidState(TModel other)
+        {
+            for (var x = 0; x < Model.R; ++x)
+            {
+                for (var y = 0; y < Model.R; ++y)
+                {
+                    for (var z = 0; z < Model.R; ++z)
+                    {
+                        if (Matrix[x, y, z] > 0 && other[x,y,z] == 0)
+                        {
+                            return false;
+                        }
+                        if (Matrix[x, y, z] == 0 && other[x, y, z] != 0)
+                        {
+                            return false;
+                        }
+                    }
+                }
+            }
+
+            return (Bots.Count == 1) && Bots[0].Coord.IsAtStart() && (Harmonics == EHarmonics.Low);
+        }
+
         public bool HasValidFinalState()
         {
             return Model.Name.Contains("FA") ? HasValidConstructState() : HasValidDestroyState();
+        }
+
+        public bool HasValidFinalState(TModel other)
+        {
+            return HasValidState(other);
         }
 
         public void Step(TCommandsReader commands)
