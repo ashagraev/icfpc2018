@@ -19,20 +19,12 @@
 
         public string Name => "Traces:" + Path.GetFileName(tracesDir);
 
-        List<ICommand> IStrategy.MakeTrace(TModel model)
+        List<ICommand> IStrategy.MakeTrace(TModel src, TModel dst)
         {
-            var traceFile = $"{tracesDir}/{model.Name}.nbt";
+            var traceFile = $"{tracesDir}/{dst.Name}.nbt";
             return File.Exists(traceFile)
                 ? TraceReader.Read(traceFile)
                 : new List<ICommand>();
-        }
-
-        public List<ICommand> MakeReassemblyTrace(TModel srcModel, TModel tgtModel)
-        {
-            var traceFile = $"{tracesDir}/{srcModel.Name}.nbt";
-            return File.Exists(traceFile)
-                       ? TraceReader.Read(traceFile)
-                       : new List<ICommand>();
         }
     }
 }

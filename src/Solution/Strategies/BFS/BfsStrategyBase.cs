@@ -6,20 +6,24 @@
 
     using Solution.Strategies.BFS;
 
-    // [BrokenStrategy]
     public abstract class BfsStrategyBase : IStrategy
     {
-        private readonly int maxBots = 40;
+        private readonly int maxBots;
 
         public virtual string Name => nameof(BfsStrategyBase);
 
-        public List<ICommand> MakeReassemblyTrace(TModel srcModel, TModel tgtModel)
+        protected BfsStrategyBase(int maxBots)
         {
-            return new List<ICommand>();
+            this.maxBots = maxBots;
         }
 
-        public List<ICommand> MakeTrace(TModel model)
+        public List<ICommand> MakeTrace(TModel src, TModel model)
         {
+            if (src.NumFilled != 0)
+            {
+                return null;
+            }
+
             var impl = new Impl(model, maxBots);
             return impl.MakeTrace().ToList();
         }
@@ -34,15 +38,23 @@
 
                 // Targets
                 public TCoord? FissionTarget;
-                public TCoord? FusionTarget;
+                public TCoord? FusionPTarget;
+                public TCoord? FusionSTarget;
                 public TCoord? FillTarget;
                 public TCoord? MoveTarget;
 
-                public TCoord? Target => FillTarget ?? FissionTarget ?? FusionTarget ?? MoveTarget;
+                // fusions what were already acted
+                public TCoord? ActedFusionPTarget;
+                public TCoord? ActedFusionSTarget;
+
+                public TCoord? Target => FillTarget ?? FissionTarget ?? FusionPTarget ?? FusionSTarget ?? MoveTarget;
 
                 // a trace to some cell near target
                 public List<ICommand> MoveCommands;
                 public int NextCommand;
+
+                public bool Acted = false;
+                public bool MustDie = false; // marks fused bots
             }
 
             private readonly TModel model;
@@ -53,7 +65,7 @@
             private List<Bot> bots;
             private readonly HashSet<TCoord> addedPositions;
             private readonly HashSet<TCoord> availablePositions;
-            private readonly HashSet<TCoord> botPositions;
+            private readonly Dictionary<TCoord, Bot> botPositions;
             private readonly HashSet<TCoord> interferedCells;
             private int currentDepth;
             private int numFilled = 0;
@@ -84,7 +96,7 @@
 
                 addedPositions = new HashSet<TCoord>();
                 availablePositions = new HashSet<TCoord>();
-                botPositions = new HashSet<TCoord>();
+                botPositions = new Dictionary<TCoord, Bot>();
                 for (var x = 0; x < model.R; ++x)
                 {
                     for (var z = 0; z < model.R; ++z)
@@ -159,13 +171,22 @@
 
                     foreach (var bot in bots)
                     {
-                        botPositions.Add(bot.Coord);
+                        botPositions.Add(bot.Coord, bot);
                         interferedCells.Add(bot.Coord);
                     }
 
                     var newBots = new List<Bot>();
-                    int? deadBotId = null;
+                    int numDeadBots = 0;
                     var filledCoords = new List<TCoord>();
+                    int numPlannedFusions = bots.Count(b => b.FusionSTarget != null);
+
+                    foreach (var b in bots)
+                    {
+                        b.Acted = false;
+                        b.MustDie = false;
+                        b.ActedFusionPTarget = null;
+                        b.ActedFusionSTarget = null;
+                    }
 
                     if ((availablePositions.Count == 0) && (bots.Count == 1) && bots[0].Coord.IsAtStart())
                     {
@@ -182,22 +203,26 @@
                     {
                         if ((bot.Target == null) || !CanMove(bot) || (bot.FillTarget != null && Depth(bot.FillTarget.Value) != currentDepth))
                         {
-                            ChooseNewTarget(bot, newBots);
+                            ChooseNewTarget(bot, newBots, ref numPlannedFusions);
                         }
 
                         if ((bot.Target != null) && CanMove(bot))
                         {
                             idle = false;
                             var pc = bot.Coord;
-                            yield return MoveBot(bot, newBots, ref deadBotId, filledCoords);
-
-                            // Console.WriteLine($"{pc} -> {bot.Coord}");
+                            yield return MoveBot(bot, newBots, ref numDeadBots, filledCoords);
+                            Console.WriteLine($"{bot.Id} move {pc} -> {bot.Coord} ({!bot.MustDie}, {numDeadBots})");
                         }
                         else
                         {
+                            Console.WriteLine($"{bot.Id} waits at {bot.Coord}");
                             yield return new Wait();
                         }
+
+                        bot.Acted = true;
                     }
+
+                    Console.WriteLine("-----");
 
                     if (idle)
                     {
@@ -205,13 +230,11 @@
                         if (++idleSteps >= 2)
                         {
                             Console.WriteLine($"STUCK  {numFilled}/{model.NumFilled}");
-                            /*
                             foreach (var b in bots)
                             {
-                                ChooseNewTarget(b, newBots);
+                                ChooseNewTarget(b, newBots, ref numPlannedFusions);
                                 Console.WriteLine($"{b.Id}: {b.Coord}, T: {b.Target}");
                             }
-                            */
                             yield break;
                             throw new Exception("STUCK");
                         }
@@ -228,13 +251,15 @@
                         bots = bots.OrderBy(bot => bot.Id).ToList();
                     }
 
-                    if (deadBotId != null)
+                    if (numDeadBots != 0)
                     {
-                        var liveBot = bots.First(IsPrimaryBotForFusion);
-                        var deadBot = bots.First(bot => bot.Id == deadBotId);
-                        liveBot.Seeds.Add(deadBot.Id);
-                        deadBot.Seeds.AddRange(deadBot.Seeds);
-                        bots = bots.Where(bot => bot.Id != deadBotId).ToList();
+                        bots = bots.Where(bot => !bot.MustDie).ToList();
+
+                        foreach (var b in bots)
+                        {
+                            var seeds = string.Join(",", b.Seeds);
+                            Console.WriteLine($"{b.Id}: {b.Coord}, S: {seeds}");
+                        }
                     }
 
                     foreach (var c in filledCoords)
@@ -253,7 +278,7 @@
                     if (filledCoords.Count != 0)
                     {
                         numFilled += filledCoords.Count;
-                        Console.WriteLine($"  {numFilled} / {model.NumFilled}. {availablePositions.Count(p => Depth(p) == currentDepth)} for {bots.Count} bots");
+                        // Console.WriteLine($"  {numFilled} / {model.NumFilled}. {availablePositions.Count(p => Depth(p) == currentDepth)} for {bots.Count} bots");
                         /*
                         foreach (var c in availablePositions.Where(c => Depth(c) == currentDepth))
                         {
@@ -266,11 +291,6 @@
 
             private bool CanMove(Bot bot)
             {
-                if (bot.FusionTarget != null)
-                {
-                    return true;
-                }
-
                 if (bot.NextCommand < (bot.MoveCommands?.Count ?? 0))
                 {
                     switch (bot.MoveCommands[bot.NextCommand])
@@ -288,6 +308,8 @@
                                     }
                                 });
                             return good;
+                        case Wait w:
+                            return true;
                         case LMove m:
                             throw new NotImplementedException();
                             break;
@@ -296,17 +318,27 @@
                     }
                 }
 
+                if (bot.FusionPTarget != null)
+                {
+                    Bot another;
+                    return botPositions.TryGetValue(bot.FusionPTarget.Value, out another) &&
+                           (another.FusionSTarget ?? another.ActedFusionSTarget) != null &&
+                           (another.FusionSTarget ?? another.ActedFusionSTarget).Value.Equals(bot.Coord);
+                }
+
+                if (bot.FusionSTarget != null)
+                {
+                    Bot another;
+                    return botPositions.TryGetValue(bot.FusionSTarget.Value, out another) &&
+                           (another.FusionPTarget ?? another.ActedFusionPTarget) != null &&
+                           (another.FusionPTarget ?? another.ActedFusionPTarget).Value.Equals(bot.Coord);
+                }
+
                 return IsFree(bot.Target.Value);
             }
 
-            private ICommand MoveBot(Bot bot, List<Bot> newBots, ref int? deadBotId, List<TCoord> filledCoords)
+            private ICommand MoveBot(Bot bot, List<Bot> newBots, ref int numDeadBots, List<TCoord> filledCoords)
             {
-                if (bot.MoveTarget != null && bot.MoveTarget.Value.Equals(bot.Coord))
-                {
-                    bot.MoveTarget = null;
-                    return new Wait();
-                }
-
                 if (bot.NextCommand < (bot.MoveCommands?.Count ?? 0))
                 {
                     switch (bot.MoveCommands[bot.NextCommand])
@@ -314,17 +346,22 @@
                         case StraightMove m:
                             TraceMove(bot.Coord, m, coord => interferedCells.Add(coord));
                             bot.Coord.Apply(m.Diff);
-                            ++bot.NextCommand;
-                            if (bot.MoveTarget != null && bot.NextCommand == bot.MoveCommands.Count)
-                            {
-                                bot.MoveTarget = null;
-                            }
-                            return m;
+                            break;
                         case LMove m:
                             throw new NotImplementedException();
+                        case Wait w:
+                            break;
                         default:
                             throw new Exception($"WTF, unexpected command: {bot.GetType().FullName}");
                     }
+
+                    ++bot.NextCommand;
+                    if (bot.MoveTarget != null && bot.NextCommand == bot.MoveCommands.Count)
+                    {
+                        bot.MoveTarget = null;
+                    }
+
+                    return bot.MoveCommands[bot.NextCommand - 1];
                 }
 
                 if (bot.FissionTarget != null)
@@ -349,23 +386,35 @@
                     return ret;
                 }
 
-                if (bot.FusionTarget != null)
+                if (bot.FusionPTarget != null)
                 {
-                    interferedCells.Add(bot.FusionTarget.Value);
-
-                    ICommand ret;
-                    var diff = bot.FusionTarget.Value.Diff(bot.Coord);
-                    if (IsPrimaryBotForFusion(bot))
+                    interferedCells.Add(bot.FusionPTarget.Value);
+                    if (botPositions.TryGetValue(bot.FusionPTarget.Value, out var another))
                     {
-                        ret = new FusionP { Diff = diff };
-                    }
-                    else
-                    {
-                        deadBotId = bot.Id;
-                        ret = new FusionS { Diff = diff };
+                        var ret = new FusionP { Diff = bot.FusionPTarget.Value.Diff(bot.Coord) };
+
+                        bot.Seeds.Add(another.Id);
+                        bot.Seeds.AddRange(another.Seeds);
+                        bot.Seeds.Sort();
+                        bot.ActedFusionPTarget = bot.FusionPTarget;
+                        bot.FusionPTarget = null;
+
+                        return ret;
                     }
 
-                    bot.FusionTarget = null;
+                    throw new InvalidOperationException("Trying to run fusion on not a bot cell!");
+                }
+                else if (bot.FusionSTarget != null)
+                {
+                    var ret = new FusionS { Diff = bot.FusionSTarget.Value.Diff(bot.Coord) };
+
+                    interferedCells.Add(bot.FusionSTarget.Value);
+                    ++numDeadBots;
+                    bot.MustDie = true;
+                    interferedCells.Add(bot.FusionSTarget.Value);
+                    bot.ActedFusionSTarget = bot.FusionSTarget;
+                    bot.FusionSTarget = null;
+
                     return ret;
                 }
 
@@ -383,11 +432,33 @@
                     return ret;
                 }
 
-                throw new Exception("WTF");
+                throw new Exception($"WTF {numFilled} / {model.NumFilled}");
             }
 
-            private void ChooseNewTarget(Bot bot, List<Bot> newBots)
+            private void ChooseNewTarget(Bot bot, List<Bot> newBots, ref int numPlannedFusions)
             {
+                if (bot.FusionSTarget != null)
+                {
+                    throw new Exception($"Impossible: fusionS target should always be actionable... {bot.Id}");
+                }
+
+                if (bot.FusionPTarget != null)
+                {
+                    // remove actions from a friend also
+                    if (botPositions.TryGetValue(bot.FusionPTarget.Value, out var another) && another.FusionSTarget != null)
+                    {
+                        bot.FusionPTarget = null;
+
+                        another.FusionSTarget = null;
+                        another.NextCommand = 0;
+                        another.MoveCommands = null;
+                    }
+                    else
+                    {
+                        throw new Exception($"Impossible: secondary bot should always be waiting inplace! Only primary can cancel fusion... {bot.Id}");
+                    }
+                }
+
                 bot.FissionTarget = null;
                 bot.FillTarget = null;
                 bot.MoveCommands = null;
@@ -404,16 +475,26 @@
                     }
                 }
 
-                if (availablePositions.Count == 0)
+                if (availablePositions.Count == 0 && bots.Count == 1)
                 {
-                    Fuse(bot);
-
-                    if (bot.MoveCommands == null)
+                    foreach (var c in PathEnumerator.EnumerateReachablePaths(bot.Coord, 1000))
                     {
-                        return;
-                        throw new Exception("NO PATH TO ORIGIN!");
+                        if (c.Coord.IsAtStart())
+                        {
+                            bot.MoveTarget = c.Coord;
+                            bot.NextCommand = 0;
+                            bot.MoveCommands = c.RecreatePath(bot.Coord);
+                            return;
+                        }
                     }
 
+                    throw new Exception("No path to origin found for last bot!");
+                }
+
+                if (availablePositions.Count * 2 < (bots.Count - numPlannedFusions))
+                {
+                    Fuse(bot);
+                    ++numPlannedFusions;
                     return;
                 }
 
@@ -427,12 +508,12 @@
                                     n.IsValid(model.R) &&
                                     Depth(n) == currentDepth &&
                                     availablePositions.Contains(n) &&
-                                    (!botPositions.Contains(n)));
+                                    (!botPositions.ContainsKey(n)));
                         foreach (var n in neighbours)
                         {
                             bot.FillTarget = n;
                             bot.MoveCommands = c.RecreatePath(bot.Coord);
-                            // Console.WriteLine($"COORDS: {bot.Id}@{bot.Coord}, FILL: {bot.Target}, D: {(bot.Target == null ? -1 : Depth(bot.Target.Value))}, M: {bot.MoveCommands?.Count} " + string.Join(", ", bot.MoveCommands ?? new List<ICommand>()));
+                            Console.WriteLine($"COORDS: {bot.Id}@{bot.Coord}, FILL: {bot.Target}, D: {(bot.Target == null ? -1 : Depth(bot.Target.Value))}, M: {bot.MoveCommands?.Count} " + string.Join(", ", bot.MoveCommands ?? new List<ICommand>()));
                             return;
                         }
                     }
@@ -444,7 +525,7 @@
                     {
                         bot.MoveTarget = c.Coord;
                         bot.MoveCommands = c.RecreatePath(bot.Coord);
-                        // Console.WriteLine($"COORDS: {bot.Id}@{bot.Coord}, MOVE: {bot.Target}, D: {(bot.Target == null ? -1 : Depth(bot.Target.Value))}, M: {bot.MoveCommands?.Count} "+ string.Join(", ", bot.MoveCommands ?? new List<ICommand>()));
+                        Console.WriteLine($"COORDS: {bot.Id}@{bot.Coord}, MOVE: {bot.Target}, D: {(bot.Target == null ? -1 : Depth(bot.Target.Value))}, M: {bot.MoveCommands?.Count} "+ string.Join(", ", bot.MoveCommands ?? new List<ICommand>()));
                         return;
                     }
                 }
@@ -452,50 +533,31 @@
 
             private void Fuse(Bot bot)
             {
-                if (bots.Count == 0)
-                {
-                    throw new Exception("Where did the bots go?");
-                }
-
-                if (bots.Count == 1)
-                {
-                    // All done here.
-                    return;
-                }
-
-                var firstTwoBots = bots.OrderBy(x => x.Id).Take(2).ToArray();
-                var (primary, secondary) = (firstTwoBots[0], firstTwoBots[1]);
-
-                if (bot.Id != primary.Id && bot.Id != secondary.Id)
-                {
-                    // Our time has not come yet.
-                    return;
-                }
-
-                var primaryDest = new TCoord(0, 0, 0);
-                var secondaryDest = new TCoord(0, 1, 0);
-                if (primary.Coord.Equals(primaryDest) && secondary.Coord.Equals(secondaryDest))
-                {
-                    // Let's fuse!
-                    primary.FusionTarget = secondaryDest;
-                    secondary.FusionTarget = primaryDest;
-                    return;
-                }
-
-                var destCoord = bot.Id == primary.Id ? primaryDest : secondaryDest;
-                if (bot.Coord.Equals(destCoord))
-                {
-                    return;
-                }
-
-                bot.MoveTarget = destCoord;
                 foreach (var c in PathEnumerator.EnumerateReachablePaths(bot.Coord, 1000))
                 {
-                    if (c.Coord.Equals(destCoord))
+                    foreach (var n in c.Coord.NearNeighbours().Where(n => n.IsValid(model.R)))
                     {
-                        bot.MoveCommands = c.RecreatePath(bot.Coord);
-                        bot.NextCommand = 0;
-                        break;
+                        if (botPositions.TryGetValue(n, out var another))
+                        {
+                            if (another.Target == null && !another.Acted && another.Id != bot.Id)
+                            {
+                                // come and eat!
+                                bot.FusionPTarget = n;
+                                bot.NextCommand = 0;
+                                bot.MoveCommands = c.RecreatePath(bot.Coord);
+
+                                // just wait!
+                                another.FusionSTarget = c.Coord;
+                                another.NextCommand = 0;
+                                another.MoveCommands = bot.MoveCommands.Select(_ => (ICommand)new Wait()).ToList();
+
+                                Console.WriteLine($"COORDS: {bot.Id}@{bot.Coord}, FUSEP: {bot.Target}, D: {(bot.Target == null ? -1 : Depth(bot.Target.Value))}, M: {bot.MoveCommands?.Count} " + string.Join(", ", bot.MoveCommands ?? new List<ICommand>()));
+
+                                Console.WriteLine($"COORDS: {another.Id}@{another.Coord}, FUSES: {another.Target}, D: {(another.Target == null ? -1 : Depth(another.Target.Value))}, M: {another.MoveCommands?.Count} " + string.Join(", ", another.MoveCommands ?? new List<ICommand>()));
+
+                                return;
+                            }
+                        }
                     }
                 }
             }

@@ -108,6 +108,14 @@ namespace Solution
 
         public int this[TCoord coord] => targetMatrix[coord.X, coord.Y, coord.Z];
 
+        private TModel(string name, int r)
+        {
+            Name = name;
+            R = r;
+            NumFilled = 0;
+            targetMatrix = new int[R, R, R];
+        }
+
         public TModel(string path)
         {
             Name = Path.GetFileNameWithoutExtension(path);
@@ -151,6 +159,11 @@ namespace Solution
                     }
                 }
             }
+        }
+
+        public static TModel MakeEmpty(string name, int r)
+        {
+            return new TModel(name, r);
         }
     }
 

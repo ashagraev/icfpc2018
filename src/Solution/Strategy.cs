@@ -6,8 +6,7 @@
     public interface IStrategy
     {
         string Name { get; }
-        List<ICommand> MakeTrace(TModel model);
-        List<ICommand> MakeReassemblyTrace(TModel srcModel, TModel tgtModel);
+        List<ICommand> MakeTrace(TModel src, TModel dst);
     }
 
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]

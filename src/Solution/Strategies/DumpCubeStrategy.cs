@@ -456,8 +456,13 @@
     {
         public string Name => nameof(DumpCubeStrategy);
 
-        public List<ICommand> MakeTrace(TModel model)
+        public List<ICommand> MakeTrace(TModel src, TModel model)
         {
+            if (src.NumFilled != 0)
+            {
+                return null;
+            }
+
             ICommand modifyCommand = new Fill();
             ((Fill)modifyCommand).Diff.Dy = -1;
             if (model.Name.Contains("FD"))

@@ -231,13 +231,13 @@ namespace Solution.Strategies
     {
         public string Name => nameof(BetterCubeStrategy);
 
-        public List<ICommand> MakeReassemblyTrace(TModel srcModel, TModel tgtModel)
+        public List<ICommand> MakeTrace(TModel src, TModel model)
         {
-            return new List<ICommand>();
-        }
+            if (src.NumFilled != 0)
+            {
+                return null;
+            }
 
-        public List<ICommand> MakeTrace(TModel model)
-        {
             EHarmonics curHarmonics = EHarmonics.Low;
 
             List<ICommand> result = new List<ICommand>();

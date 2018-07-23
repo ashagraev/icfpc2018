@@ -9,13 +9,13 @@
     {
         public string Name => nameof(StupidFissionFusionStategy);
 
-        public List<ICommand> MakeReassemblyTrace(TModel srcModel, TModel tgtModel)
+        public List<ICommand> MakeTrace(TModel src, TModel model)
         {
-            return new List<ICommand>();
-        }
+            if (src.NumFilled != 0)
+            {
+                return null;
+            }
 
-        public List<ICommand> MakeTrace(TModel model)
-        {
             var rangeX = new Range();
             var rangeY = new Range();
             var rangeZ = new Range();
