@@ -10,7 +10,7 @@
     {
         private readonly int maxBots;
 
-        internal const bool Trace = true;
+        internal const bool Trace = false;
 
         public virtual string Name => nameof(BfsStrategyBase);
 
@@ -59,6 +59,14 @@
                 public bool MustDie = false; // marks fused bots
 
                 public int FissionTimeout = 0;
+                public int IdleTime = 0;
+
+                public int MaxSteps =>
+                    //IdleTime == 0 ? 100000 :
+                    //IdleTime == 1 ? 10000000 :
+                    int.MaxValue;
+
+                public bool IdleTooLong => IdleTime > 3;
             }
 
             private readonly TModel model;
@@ -74,8 +82,9 @@
             private readonly HashSet<TCoord> interferedCells;
             private int currentDepth;
             private int numFilled = 0;
+            private int idleBots;
 
-            private BFS.PathEnumerator PathEnumerator;
+            private PathEnumerator PathEnumerator;
 
             int Depth(TCoord c) => depth_[c.X, c.Y, c.Z];
 
@@ -120,6 +129,7 @@
 
                 PathEnumerator = new PathEnumerator(model, state, depth_, interferedCells);
             }
+
             private void CalcDepth()
             {
                 depth_ = new int[model.R, model.R, model.R];
@@ -184,6 +194,7 @@
                     int numDeadBots = 0;
                     var filledCoords = new List<TCoord>();
                     int numPlannedFusions = bots.Count(b => b.FusionSTarget != null);
+                    idleBots = 0;
 
                     foreach (var b in bots)
                     {
@@ -192,6 +203,15 @@
                         b.ActedFusionPTarget = null;
                         b.ActedFusionSTarget = null;
                         --b.FissionTimeout;
+                        if (b.IdleTooLong)
+                        {
+                            ++idleBots;
+                        }
+                    }
+
+                    if (Trace)
+                    {
+                        Console.WriteLine($"-----");
                     }
 
                     if ((availablePositions.Count == 0) && (bots.Count == 1) && bots[0].Coord.IsAtStart())
@@ -204,20 +224,40 @@
                     {
                         currentDepth = availablePositions.Select(Depth).Max();
                     }
+
                     availableAtThisLevel = availablePositions.Count(p => Depth(p) == currentDepth);
 
                     foreach (var bot in bots)
                     {
                         if ((bot.Target == null) || !CanMove(bot) || (bot.FillTarget != null && Depth(bot.FillTarget.Value) != currentDepth))
                         {
+                            if (Trace)
+                            {
+                                //Console.WriteLine($"!{bot.IdleTime}");
+                            }
+
                             ChooseNewTarget(bot, newBots, ref numPlannedFusions);
+                            if (bot.Target != null && !CanMove(bot))
+                            {
+                                throw new Exception("Something bad happened");
+                            }
                         }
 
                         if ((bot.Target != null) && CanMove(bot))
                         {
-                            idle = false;
                             var pc = bot.Coord;
-                            yield return MoveBot(bot, newBots, ref numDeadBots, filledCoords);
+                            var cmd = MoveBot(bot, newBots, ref numDeadBots, filledCoords);
+                            if (cmd is Wait)
+                            {
+                                ++bot.IdleTime;
+                            }
+                            else
+                            {
+                                idle = false;
+                                bot.IdleTime = 0;
+                            }
+
+                            yield return cmd;
 
                             if (Trace)
                             {
@@ -228,8 +268,10 @@
                         {
                             if (Trace)
                             {
-                                Console.WriteLine($"{bot.Id} waits at {bot.Coord}");
+                                Console.WriteLine($"{bot.Id} waits at {bot.Coord}  ({model[bot.Coord]}/{state.M(bot.Coord)}/{Depth(bot.Coord)}");
                             }
+
+                            ++bot.IdleTime;
 
                             yield return new Wait();
                         }
@@ -237,15 +279,10 @@
                         bot.Acted = true;
                     }
 
-                    if (Trace)
-                    {
-                        Console.WriteLine("-----");
-                    }
-
                     if (idle)
                     {
                         // we are stuck. Just produce some garbage trace
-                        if (++idleSteps >= 2)
+                        if (++idleSteps >= 3)
                         {
                             Console.WriteLine($"STUCK  {numFilled}/{model.NumFilled}");
                             if (Trace)
@@ -254,6 +291,12 @@
                                 {
                                     ChooseNewTarget(b, newBots, ref numPlannedFusions);
                                     Console.WriteLine($"{b.Id}: {b.Coord}, T: {b.Target}");
+                                }
+
+                                Console.WriteLine($"Cur depth: {currentDepth}");
+                                foreach (var c in availablePositions.Where(c => Depth(c) == currentDepth))
+                                {
+                                    Console.WriteLine($"  A: {c}");
                                 }
                             }
 
@@ -306,20 +349,21 @@
                         {
                             currentDepth = availablePositions.Select(Depth).Max();
                         }
+
                         Console.WriteLine(
                             $"  {numFilled} / {model.NumFilled}. {availablePositions.Count(p => Depth(p) == currentDepth)} for {bots.Count} bots");
                     }
 
-
                     if (filledCoords.Count != 0)
                     {
                         numFilled += filledCoords.Count;
+
                         /*
-                        foreach (var c in availablePositions.Where(c => Depth(c) == currentDepth))
-                        {
-                            Console.WriteLine($"  A: {c}");
-                        }
-                        */
+                                                foreach (var c in availablePositions.Where(c => Depth(c) == currentDepth))
+                                                {
+                                                    Console.WriteLine($"  A: {c}");
+                                                }
+                                                */
                     }
                 }
             }
@@ -447,7 +491,6 @@
                     interferedCells.Add(bot.FusionSTarget.Value);
                     ++numDeadBots;
                     bot.MustDie = true;
-                    interferedCells.Add(bot.FusionSTarget.Value);
                     bot.ActedFusionSTarget = bot.FusionSTarget;
                     bot.FusionSTarget = null;
 
@@ -491,7 +534,8 @@
                     }
                     else
                     {
-                        throw new Exception($"Impossible: secondary bot should always be waiting inplace! Only primary can cancel fusion... {bot.Id}");
+                        throw new Exception(
+                            $"Impossible: secondary bot should always be waiting inplace! Only primary can cancel fusion... {bot.Id}");
                     }
                 }
 
@@ -500,7 +544,8 @@
                 bot.MoveCommands = null;
                 bot.NextCommand = 0;
 
-                if (bots.Count + newBots.Count < maxBots &&
+                if (idleBots == 0 &&
+                    bots.Count + newBots.Count < maxBots &&
                     bot.Seeds.Count > 0 &&
                     bot.FissionTimeout <= 0 &&
                     availableAtThisLevel > (bots.Count + newBots.Count) * 2)
@@ -514,7 +559,7 @@
 
                 if (availablePositions.Count == 0 && bots.Count == 1)
                 {
-                    foreach (var c in PathEnumerator.EnumerateReachablePaths(bot.Coord, 1000))
+                    foreach (var c in PathEnumerator.EnumerateReachablePaths(bot.Coord, 1000, bot.MaxSteps))
                     {
                         if (c.Coord.IsAtStart())
                         {
@@ -528,67 +573,43 @@
                     throw new Exception("No path to origin found for last bot!");
                 }
 
-                if (availableAtThisLevel < (bots.Count - numPlannedFusions))
-                {
-                    Fuse(bot);
-                    ++numPlannedFusions;
-                    return;
-                }
+                bool canFuse = availableAtThisLevel < (bots.Count - numPlannedFusions) || bot.IdleTime > 5;
 
-                foreach (var c in PathEnumerator.EnumerateReachablePaths(bot.Coord, currentDepth))
+                foreach (var c in PathEnumerator.EnumerateReachablePaths(bot.Coord, currentDepth, bot.MaxSteps))
                 {
                     if (Depth(c.Coord) < currentDepth)
                     {
-                        var neighbours = c.Coord.NearNeighbours()
-                            .Where(
-                                n =>
-                                    n.IsValid(model.R) &&
-                                    Depth(n) == currentDepth &&
-                                    availablePositions.Contains(n) &&
-                                    (!botPositions.ContainsKey(n)));
-                        foreach (var n in neighbours)
+                        foreach (var n in c.Coord.NearNeighbours())
                         {
-                            bot.FillTarget = n;
-                            bot.MoveCommands = c.RecreatePath(bot.Coord);
-                            if (Trace)
+                            if (!n.IsValid(model.R))
                             {
-                                Console.WriteLine(
-                                    $"COORDS: {bot.Id}@{bot.Coord}, FILL: {bot.Target}, D: {(bot.Target == null ? -1 : Depth(bot.Target.Value))}, M: {bot.MoveCommands?.Count} "
-                                    + string.Join(", ", bot.MoveCommands ?? new List<ICommand>()));
+                                continue;
+                            }
+                            if (Depth(n) == currentDepth &&
+                                availablePositions.Contains(n) &&
+                                (IsFree(n) ||(botPositions.TryGetValue(n, out var botThere) && botThere == bot)))
+                            {
+                                bot.FillTarget = n;
+                                bot.MoveCommands = c.RecreatePath(bot.Coord);
+                                if (Trace)
+                                {
+                                    if (!CanMove(bot))
+                                    {
+                                        throw new Exception("WTF");
+                                    }
+                                    Console.WriteLine(
+                                        $"COORDS: {bot.Id}@{bot.Coord}, FILL: {bot.Target}, D: {(bot.Target == null ? -1 : Depth(bot.Target.Value))}, M: {bot.MoveCommands?.Count} MS: {bot.MaxSteps} "
+                                        + string.Join(", ", bot.MoveCommands ?? new List<ICommand>()));
+                                }
+
+                                return;
                             }
 
-                            return;
-                        }
-                    }
-                }
-
-                if (!availablePositions.Contains(bot.Coord) || Depth(bot.Coord) != currentDepth)
-                {
-                    foreach (var c in PathEnumerator.EnumerateReachablePaths(bot.Coord, currentDepth).Where(c => Depth(c.Coord) == currentDepth - 2))
-                    {
-                        bot.MoveTarget = c.Coord;
-                        bot.MoveCommands = c.RecreatePath(bot.Coord);
-                        if (Trace)
-                        {
-                            Console.WriteLine(
-                                $"COORDS: {bot.Id}@{bot.Coord}, MOVE: {bot.Target}, D: {(bot.Target == null ? -1 : Depth(bot.Target.Value))}, M: {bot.MoveCommands?.Count} "
-                                + string.Join(", ", bot.MoveCommands ?? new List<ICommand>()));
-                        }
-
-                        return;
-                    }
-                }
-            }
-
-            private void Fuse(Bot bot)
-            {
-                foreach (var c in PathEnumerator.EnumerateReachablePaths(bot.Coord, 1000))
-                {
-                    foreach (var n in c.Coord.NearNeighbours().Where(n => n.IsValid(model.R)))
-                    {
-                        if (botPositions.TryGetValue(n, out var another))
-                        {
-                            if (another.Target == null && !another.Acted && another.Id != bot.Id)
+                            if (canFuse &&
+                                botPositions.TryGetValue(n, out var another) &&
+                                another.Target == null &&
+                                !another.Acted &&
+                                another.Id != bot.Id)
                             {
                                 // come and eat!
                                 bot.FusionPTarget = n;
@@ -611,15 +632,34 @@
                                         + string.Join(", ", another.MoveCommands ?? new List<ICommand>()));
                                 }
 
-
+                                ++numPlannedFusions;
                                 return;
                             }
                         }
                     }
                 }
+
+                if (Depth(bot.Coord) >= currentDepth - 1)
+                {
+                    foreach (var c in PathEnumerator.EnumerateReachablePaths(bot.Coord, currentDepth, bot.MaxSteps)
+                        .Where(c => Depth(c.Coord) < currentDepth - 1))
+                    {
+                        bot.MoveTarget = c.Coord;
+                        bot.MoveCommands = c.RecreatePath(bot.Coord);
+                        if (Trace)
+                        {
+                            Console.WriteLine(
+                                $"COORDS: {bot.Id}@{bot.Coord}, MOVE: {bot.Target}, D: {(bot.Target == null ? -1 : Depth(bot.Target.Value))}, M: {bot.MoveCommands?.Count} "
+                                + string.Join(", ", bot.MoveCommands ?? new List<ICommand>()));
+                        }
+
+                        return;
+                    }
+                }
             }
 
             private bool IsPrimaryBotForFusion(Bot bot) => bot.Coord.IsAtStart();
+
             private bool IsFree(TCoord coord) => (state.M(coord) == 0) && !interferedCells.Contains(coord);
 
             private static void TraceMove(TCoord botCoord, StraightMove m, Action<TCoord> action)

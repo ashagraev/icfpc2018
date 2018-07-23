@@ -1,5 +1,6 @@
 ﻿namespace Solution.Strategies.BFS
 {
+    using System;
     using System.Collections.Generic;
     using System.Runtime.InteropServices;
 
@@ -70,7 +71,7 @@
         }
 
 
-        public IEnumerable<CoordWithPath> EnumerateReachablePaths(TCoord src, int maxDepth)
+        public IEnumerable<CoordWithPath> EnumerateReachablePaths(TCoord src, int maxDepth, int maxSteps)
         {
             ++curGeneration;
 
@@ -86,8 +87,14 @@
             };
 
             yield return new CoordWithPath(src, cells);
+            int steps = 0;
             while (queue.Count != 0)
             {
+                if (++steps >= maxSteps)
+                {
+                    yield break; 
+                }
+
                 var cur = queue.Dequeue();
 
                 // TODO: smarter precompute?
@@ -95,10 +102,29 @@
                 var (minDy, maxDy) = FindRange(0, 1, 0);
                 var (minDz, maxDz) = FindRange(0, 0, 1);
                 
+                var c = default(CoordWithPath);
                 // we visit (and yield) closes nodes first
-                for (var i = 0; i < Constants.StraightMoveCorrection; ++i)
+                for (var dx = minDx; dx <= maxDx; ++dx)
                 {
-                    foreach (var c in DoVisits(i))
+                    if (TryVisit(Math.Abs(dx), dx, 0, 0))
+                    {
+                        yield return c;
+                        queue.Enqueue(c.Coord);
+                    }
+                }
+
+                for (var dy = minDy; dy <= maxDy; ++dy)
+                {
+                    if (TryVisit(Math.Abs(dy), 0, dy, 0))
+                    {
+                        yield return c;
+                        queue.Enqueue(c.Coord);
+                    }
+                }
+
+                for (var dz = minDz; dz <= maxDz; ++dz)
+                {
+                    if (TryVisit(Math.Abs(dz), 0, 0, dz))
                     {
                         yield return c;
                         queue.Enqueue(c.Coord);
@@ -128,23 +154,8 @@
                     return (min + 1, max - 1);
                 }
 
-                IEnumerable<CoordWithPath> DoVisits(int dist)
+                bool TryVisit(int dist, int dx, int dy, int dz)
                 {
-                    foreach (var c in TryVisit(-dist >= minDx, dist, -dist, 0, 0)) yield return c;
-                    foreach (var c in TryVisit(dist <= maxDx, dist, dist, 0, 0)) yield return c;
-                    foreach (var c in TryVisit(-dist >= minDy, dist, 0, -dist, 0)) yield return c;
-                    foreach (var c in TryVisit(dist <= maxDy, dist, 0, dist, 0)) yield return c;
-                    foreach (var c in TryVisit(-dist >= minDz, dist, 0, 0, -dist)) yield return c;
-                    foreach (var c in TryVisit(dist <= maxDz, dist, 0, 0, dist)) yield return c;
-                }
-
-                IEnumerable<CoordWithPath> TryVisit(bool ok, int dist, int dx, int dy, int dz)
-                {
-                    if (!ok)
-                    {
-                        yield break;
-                    }
-
                     var next = new TCoord(cur.X + dx, cur.Y + dy, cur.Z + dz);
                     var curCost = cells[cur.X, cur.Y, cur.Z].Cost;
                     if (next.IsValid(model.R) && !cells[next.X, next.Y, next.Z].Visited(curGeneration))
@@ -156,10 +167,13 @@
                             Cost = curCost + (2 * dist),
                             Generation = curGeneration,
                         };
-                        yield return new CoordWithPath(next, cells);
+                        c = new CoordWithPath(next, cells);
+                        return true;
 
                         // if (!IsFree(next)) throw new Exception("WTF");
                     }
+
+                    return false;
                 }
             }
         }
