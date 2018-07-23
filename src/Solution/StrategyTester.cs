@@ -70,7 +70,7 @@
             }
             StrategyStats[BaselineStrategy.Name] = 0;
 
-            var tasks = LoadTasks(modelsDirectory);
+            var tasks = LoadTasks(modelsDirectory).OrderBy(t => t.Src.NumFilled + t.Tgt.NumFilled);
             tasks
                 .AsParallel()
                 .WithDegreeOfParallelism(15)
@@ -103,8 +103,8 @@
 
             if (!AllowedPrefixes.Any(x => task.Name.StartsWith(x)))
             {
-                writer.WriteLine($"Model {task.Name} is not allowed, copying the default trace");
-                File.Copy($"{DefaultTracesDirectory}/{Path.GetFileName(traceFile)}", traceFile, true);
+                writer.WriteLine($"Model {task.Name} is not allowed, ignoring");
+                //File.Copy($"{DefaultTracesDirectory}/{Path.GetFileName(traceFile)}", traceFile, true);
             }
             else
             {
