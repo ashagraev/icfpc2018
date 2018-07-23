@@ -523,7 +523,7 @@ namespace Solution
                 foreach (var (secondaryIdx, ndS) in fusionSecondaries)
                 {
                     var sec = Bots[secondaryIdx];
-                    if (sec.Coord.Equals(secondaryCoord))
+                    if (sec != null && sec.Coord.Equals(secondaryCoord))
                     {
                         var sanityCheckCoord = sec.Coord;
                         sanityCheckCoord.Apply(ndS);

@@ -10,6 +10,8 @@
     {
         private readonly int maxBots;
 
+        internal const bool Trace = false;
+
         public virtual string Name => nameof(BfsStrategyBase);
 
         protected BfsStrategyBase(int maxBots)
@@ -211,18 +213,29 @@
                             idle = false;
                             var pc = bot.Coord;
                             yield return MoveBot(bot, newBots, ref numDeadBots, filledCoords);
-                            Console.WriteLine($"{bot.Id} move {pc} -> {bot.Coord} ({!bot.MustDie}, {numDeadBots})");
+
+                            if (Trace)
+                            {
+                                Console.WriteLine($"{bot.Id} move {pc} -> {bot.Coord} ({!bot.MustDie}, {numDeadBots})");
+                            }
                         }
                         else
                         {
-                            Console.WriteLine($"{bot.Id} waits at {bot.Coord}");
+                            if (Trace)
+                            {
+                                Console.WriteLine($"{bot.Id} waits at {bot.Coord}");
+                            }
+
                             yield return new Wait();
                         }
 
                         bot.Acted = true;
                     }
 
-                    Console.WriteLine("-----");
+                    if (Trace)
+                    {
+                        Console.WriteLine("-----");
+                    }
 
                     if (idle)
                     {
@@ -230,11 +243,15 @@
                         if (++idleSteps >= 2)
                         {
                             Console.WriteLine($"STUCK  {numFilled}/{model.NumFilled}");
-                            foreach (var b in bots)
+                            if (Trace)
                             {
-                                ChooseNewTarget(b, newBots, ref numPlannedFusions);
-                                Console.WriteLine($"{b.Id}: {b.Coord}, T: {b.Target}");
+                                foreach (var b in bots)
+                                {
+                                    ChooseNewTarget(b, newBots, ref numPlannedFusions);
+                                    Console.WriteLine($"{b.Id}: {b.Coord}, T: {b.Target}");
+                                }
                             }
+
                             yield break;
                             throw new Exception("STUCK");
                         }
@@ -258,7 +275,10 @@
                         foreach (var b in bots)
                         {
                             var seeds = string.Join(",", b.Seeds);
-                            Console.WriteLine($"{b.Id}: {b.Coord}, S: {seeds}");
+                            if (Trace)
+                            {
+                                Console.WriteLine($"{b.Id}: {b.Coord}, S: {seeds}");
+                            }
                         }
                     }
 
@@ -513,7 +533,13 @@
                         {
                             bot.FillTarget = n;
                             bot.MoveCommands = c.RecreatePath(bot.Coord);
-                            Console.WriteLine($"COORDS: {bot.Id}@{bot.Coord}, FILL: {bot.Target}, D: {(bot.Target == null ? -1 : Depth(bot.Target.Value))}, M: {bot.MoveCommands?.Count} " + string.Join(", ", bot.MoveCommands ?? new List<ICommand>()));
+                            if (Trace)
+                            {
+                                Console.WriteLine(
+                                    $"COORDS: {bot.Id}@{bot.Coord}, FILL: {bot.Target}, D: {(bot.Target == null ? -1 : Depth(bot.Target.Value))}, M: {bot.MoveCommands?.Count} "
+                                    + string.Join(", ", bot.MoveCommands ?? new List<ICommand>()));
+                            }
+
                             return;
                         }
                     }
@@ -525,7 +551,13 @@
                     {
                         bot.MoveTarget = c.Coord;
                         bot.MoveCommands = c.RecreatePath(bot.Coord);
-                        Console.WriteLine($"COORDS: {bot.Id}@{bot.Coord}, MOVE: {bot.Target}, D: {(bot.Target == null ? -1 : Depth(bot.Target.Value))}, M: {bot.MoveCommands?.Count} "+ string.Join(", ", bot.MoveCommands ?? new List<ICommand>()));
+                        if (Trace)
+                        {
+                            Console.WriteLine(
+                                $"COORDS: {bot.Id}@{bot.Coord}, MOVE: {bot.Target}, D: {(bot.Target == null ? -1 : Depth(bot.Target.Value))}, M: {bot.MoveCommands?.Count} "
+                                + string.Join(", ", bot.MoveCommands ?? new List<ICommand>()));
+                        }
+
                         return;
                     }
                 }
@@ -551,9 +583,17 @@
                                 another.NextCommand = 0;
                                 another.MoveCommands = bot.MoveCommands.Select(_ => (ICommand)new Wait()).ToList();
 
-                                Console.WriteLine($"COORDS: {bot.Id}@{bot.Coord}, FUSEP: {bot.Target}, D: {(bot.Target == null ? -1 : Depth(bot.Target.Value))}, M: {bot.MoveCommands?.Count} " + string.Join(", ", bot.MoveCommands ?? new List<ICommand>()));
+                                if (Trace)
+                                {
+                                    Console.WriteLine(
+                                        $"COORDS: {bot.Id}@{bot.Coord}, FUSEP: {bot.Target}, D: {(bot.Target == null ? -1 : Depth(bot.Target.Value))}, M: {bot.MoveCommands?.Count} "
+                                        + string.Join(", ", bot.MoveCommands ?? new List<ICommand>()));
 
-                                Console.WriteLine($"COORDS: {another.Id}@{another.Coord}, FUSES: {another.Target}, D: {(another.Target == null ? -1 : Depth(another.Target.Value))}, M: {another.MoveCommands?.Count} " + string.Join(", ", another.MoveCommands ?? new List<ICommand>()));
+                                    Console.WriteLine(
+                                        $"COORDS: {another.Id}@{another.Coord}, FUSES: {another.Target}, D: {(another.Target == null ? -1 : Depth(another.Target.Value))}, M: {another.MoveCommands?.Count} "
+                                        + string.Join(", ", another.MoveCommands ?? new List<ICommand>()));
+                                }
+
 
                                 return;
                             }
