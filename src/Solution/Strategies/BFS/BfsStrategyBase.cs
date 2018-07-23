@@ -559,7 +559,7 @@
 
                 if (availablePositions.Count == 0 && bots.Count == 1)
                 {
-                    foreach (var c in PathEnumerator.EnumerateReachablePaths(bot.Coord, 1000, bot.MaxSteps))
+                    foreach (var c in PathEnumerator.EnumerateReachablePaths(bot.Coord, 1000, int.MaxValue))
                     {
                         if (c.Coord.IsAtStart())
                         {
