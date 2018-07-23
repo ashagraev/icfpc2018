@@ -10,7 +10,7 @@
     {
         private readonly int maxBots;
 
-        internal const bool Trace = false;
+        internal const bool Trace = true;
 
         public virtual string Name => nameof(BfsStrategyBase);
 
@@ -57,6 +57,8 @@
 
                 public bool Acted = false;
                 public bool MustDie = false; // marks fused bots
+
+                public int FissionTimeout = 0;
             }
 
             private readonly TModel model;
@@ -67,6 +69,7 @@
             private List<Bot> bots;
             private readonly HashSet<TCoord> addedPositions;
             private readonly HashSet<TCoord> availablePositions;
+            private int availableAtThisLevel;
             private readonly Dictionary<TCoord, Bot> botPositions;
             private readonly HashSet<TCoord> interferedCells;
             private int currentDepth;
@@ -188,6 +191,7 @@
                         b.MustDie = false;
                         b.ActedFusionPTarget = null;
                         b.ActedFusionSTarget = null;
+                        --b.FissionTimeout;
                     }
 
                     if ((availablePositions.Count == 0) && (bots.Count == 1) && bots[0].Coord.IsAtStart())
@@ -200,6 +204,7 @@
                     {
                         currentDepth = availablePositions.Select(Depth).Max();
                     }
+                    availableAtThisLevel = availablePositions.Count(p => Depth(p) == currentDepth);
 
                     foreach (var bot in bots)
                     {
@@ -295,10 +300,20 @@
                         }
                     }
 
+                    if (Trace)
+                    {
+                        if (availablePositions.Count != 0)
+                        {
+                            currentDepth = availablePositions.Select(Depth).Max();
+                        }
+                        Console.WriteLine(
+                            $"  {numFilled} / {model.NumFilled}. {availablePositions.Count(p => Depth(p) == currentDepth)} for {bots.Count} bots");
+                    }
+
+
                     if (filledCoords.Count != 0)
                     {
                         numFilled += filledCoords.Count;
-                        // Console.WriteLine($"  {numFilled} / {model.NumFilled}. {availablePositions.Count(p => Depth(p) == currentDepth)} for {bots.Count} bots");
                         /*
                         foreach (var c in availablePositions.Where(c => Depth(c) == currentDepth))
                         {
@@ -393,7 +408,8 @@
                         {
                             Id = bot.Seeds[0],
                             Coord = bot.FissionTarget.Value,
-                            Seeds = bot.Seeds.Skip(1).Take(m).ToList()
+                            Seeds = bot.Seeds.Skip(1).Take(m).ToList(),
+                            FissionTimeout = 3,
                         });
                     bot.Seeds.RemoveRange(0, m + 1);
 
@@ -486,7 +502,8 @@
 
                 if (bots.Count + newBots.Count < maxBots &&
                     bot.Seeds.Count > 0 &&
-                    availablePositions.Count(p => Depth(p) == currentDepth) > (bots.Count + newBots.Count) * 2)
+                    bot.FissionTimeout <= 0 &&
+                    availableAtThisLevel > (bots.Count + newBots.Count) * 2)
                 {
                     foreach (var coord in bot.Coord.NearNeighbours().Where(n => n.IsValid(model.R) && IsFree(n) && Depth(n) < currentDepth))
                     {
@@ -511,7 +528,7 @@
                     throw new Exception("No path to origin found for last bot!");
                 }
 
-                if (availablePositions.Count * 2 < (bots.Count - numPlannedFusions))
+                if (availableAtThisLevel < (bots.Count - numPlannedFusions))
                 {
                     Fuse(bot);
                     ++numPlannedFusions;

@@ -9,7 +9,7 @@
     {
         private static void Main(string[] args)
         {
-            var modelName = "FA001";
+            var modelName = "FA160";
 
             //var srcModel = new TModel($"Data/Problems/{modelName}_src.mdl");
             var tgtModel = new TModel($"Data/Problems/{modelName}_tgt.mdl");
