@@ -3,8 +3,11 @@
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Numerics;
 
     using Solution.Strategies.BFS;
+
+    using Void = Solution.Void;
 
     public abstract class BfsStrategyBase : IStrategy
     {
@@ -19,19 +22,37 @@
             this.maxBots = maxBots;
         }
 
-        public List<ICommand> MakeTrace(TModel src, TModel model)
+        public List<ICommand> MakeTrace(TModel src, TModel tgt)
         {
-            if (src.NumFilled != 0)
+            if (src.NumFilled == 0)
             {
-                return null;
+                var impl = new Impl(Impl.Mode.Assembly, tgt, maxBots);
+                return impl.MakeTrace().ToList();
             }
 
-            var impl = new Impl(model, maxBots);
-            return impl.MakeTrace().ToList();
+            if (tgt.NumFilled == 0)
+            {
+                var impl = new Impl(Impl.Mode.Dissassembly, src, maxBots);
+                return impl.MakeTrace().ToList();
+            }
+
+            // FIXME: be smart!
+            var impl1 = new Impl(Impl.Mode.Dissassembly, src, maxBots);
+            var impl2 = new Impl(Impl.Mode.Assembly, tgt, maxBots);
+            
+            return impl1.MakeTrace(noHalt: true)
+                .Concat(impl2.MakeTrace())
+                .ToList();
         }
 
         internal class Impl
         {
+            public enum Mode
+            {
+                Dissassembly,
+                Assembly,
+            }
+
             private class Bot
             {
                 public int Id;
@@ -44,12 +65,13 @@
                 public TCoord? FusionSTarget;
                 public TCoord? FillTarget;
                 public TCoord? MoveTarget;
+                public TCoord? VoidTarget;
 
                 // fusions what were already acted
                 public TCoord? ActedFusionPTarget;
                 public TCoord? ActedFusionSTarget;
 
-                public TCoord? Target => FillTarget ?? FissionTarget ?? FusionPTarget ?? FusionSTarget ?? MoveTarget;
+                public TCoord? Target => FillTarget ?? VoidTarget ?? FissionTarget ?? FusionPTarget ?? FusionSTarget ?? MoveTarget;
 
                 // a trace to some cell near target
                 public List<ICommand> MoveCommands;
@@ -69,6 +91,7 @@
                 public bool IdleTooLong => IdleTime > 3;
             }
 
+            private readonly Mode mode;
             private readonly TModel model;
             private readonly int maxBots;
             private int[,,] depth_;
@@ -88,8 +111,9 @@
 
             int Depth(TCoord c) => depth_[c.X, c.Y, c.Z];
 
-            public Impl(TModel model, int maxBots)
+            public Impl(Mode mode, TModel model, int maxBots)
             {
+                this.mode = mode;
                 this.model = model;
                 this.maxBots = maxBots;
                 state = new TState(this.model);
@@ -111,26 +135,87 @@
                 addedPositions = new HashSet<TCoord>();
                 availablePositions = new HashSet<TCoord>();
                 botPositions = new Dictionary<TCoord, Bot>();
+
+                interferedCells = new HashSet<TCoord>();
+
+                PathEnumerator = new PathEnumerator(model, state, depth_, interferedCells);
+
+                switch (mode)
+                {
+                    case Mode.Assembly:
+                        CalcAssemblyDepth();
+
+                        for (var x = 0; x < model.R; ++x)
+                        {
+                            for (var z = 0; z < model.R; ++z)
+                            {
+                                if (model[x, 0, z] == 1)
+                                {
+                                    addedPositions.Add(new TCoord(x, 0, z));
+                                    availablePositions.Add(new TCoord(x, 0, z));
+                                }
+                            }
+                        }
+
+                        break;
+
+                    case Mode.Dissassembly:
+                        // hack-hack
+                        CalcAssemblyDepth();
+                        for (var x = 0; x < model.R; ++x)
+                        {
+                            for (var y = 0; y < model.R; ++y)
+                            {
+                                for (var z = 0; z < model.R; ++z)
+                                {
+                                    state.Matrix[x, y, z] = model[x, y, z];
+                                    if (model[x, y, z] == 1 && depth_[x, y, z] == 2)
+                                    {
+                                        addedPositions.Add(new TCoord(x, y, z));
+                                        availablePositions.Add(new TCoord(x, y, z));
+                                    }
+                                }
+                            }
+                        }
+
+                        CalcDisassemblyDepth();
+
+                        break;
+
+                }
+            }
+
+            // actually calculates length of path from ground
+            private void CalcDisassemblyDepth()
+            {
+                depth_ = new int[model.R, model.R, model.R];
+
+                var queue = new Queue<TCoord>();
                 for (var x = 0; x < model.R; ++x)
                 {
                     for (var z = 0; z < model.R; ++z)
                     {
                         if (model[x, 0, z] == 1)
                         {
-                            addedPositions.Add(new TCoord(x, 0, z));
-                            availablePositions.Add(new TCoord(x, 0, z));
+                            queue.Enqueue(new TCoord(x, 0, z));
+                            depth_[x, 0, z] = 1;
                         }
                     }
                 }
 
-                interferedCells = new HashSet<TCoord>();
-
-                CalcDepth();
-
-                PathEnumerator = new PathEnumerator(model, state, depth_, interferedCells);
+                while (queue.Count != 0)
+                {
+                    var cur = queue.Dequeue();
+                    var d = Depth(cur);
+                    foreach (var n in cur.ManhattenNeighbours().Where(n => n.IsValid(model.R) && model[n] != 0 && Depth(n) == 0))
+                    {
+                        depth_[n.X, n.Y, n.Z] = d + 1;
+                        queue.Enqueue(n);
+                    }
+                }
             }
 
-            private void CalcDepth()
+            private void CalcAssemblyDepth()
             {
                 depth_ = new int[model.R, model.R, model.R];
                 var queue = new Queue<TCoord>();
@@ -174,7 +259,7 @@
                 }
             }
 
-            public IEnumerable<ICommand> MakeTrace()
+            public IEnumerable<ICommand> MakeTrace(bool noHalt = false)
             {
                 var idleSteps = 0;
 
@@ -192,7 +277,7 @@
 
                     var newBots = new List<Bot>();
                     int numDeadBots = 0;
-                    var filledCoords = new List<TCoord>();
+                    var changedCoords = new List<TCoord>();
                     int numPlannedFusions = bots.Count(b => b.FusionSTarget != null);
                     idleBots = 0;
 
@@ -216,7 +301,11 @@
 
                     if ((availablePositions.Count == 0) && (bots.Count == 1) && bots[0].Coord.IsAtStart())
                     {
-                        yield return new Halt();
+                        if (!noHalt)
+                        {
+                            yield return new Halt();
+                        }
+
                         yield break;
                     }
 
@@ -246,7 +335,7 @@
                         if ((bot.Target != null) && CanMove(bot))
                         {
                             var pc = bot.Coord;
-                            var cmd = MoveBot(bot, newBots, ref numDeadBots, filledCoords);
+                            var cmd = MoveBot(bot, newBots, ref numDeadBots, changedCoords);
                             if (cmd is Wait)
                             {
                                 ++bot.IdleTime;
@@ -330,15 +419,52 @@
                         }
                     }
 
-                    foreach (var c in filledCoords)
+                    foreach (var c in changedCoords)
                     {
-                        state.Matrix[c.X, c.Y, c.Z] = 1;
-                        foreach (var n in c.ManhattenNeighbours())
+                        if (mode == Mode.Assembly)
                         {
-                            if (n.IsValid(model.R) && model[n] != 0 && !addedPositions.Contains(n))
+                            state.Matrix[c.X, c.Y, c.Z] = 1;
+                            foreach (var n in c.ManhattenNeighbours())
                             {
-                                addedPositions.Add(n);
-                                availablePositions.Add(n);
+                                if (n.IsValid(model.R) && model[n] != 0 && !addedPositions.Contains(n))
+                                {
+                                    addedPositions.Add(n);
+                                    availablePositions.Add(n);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            if (Trace)
+                            {
+                                foreach (var cc in availablePositions)
+                                {
+                                    if (state.M(cc) == 0)
+                                    {
+                                        throw new Exception("WTF");
+                                    }
+                                }
+                            }
+
+                            state.Matrix[c.X, c.Y, c.Z] = 0;
+                            foreach (var n in c.ManhattenNeighbours())
+                            {
+                                if (n.IsValid(model.R) && state.M(n) != 0 && !addedPositions.Contains(n))
+                                {
+                                    addedPositions.Add(n);
+                                    availablePositions.Add(n);
+                                }
+                            }
+
+                            if (Trace)
+                            {
+                                foreach (var cc in availablePositions)
+                                {
+                                    if (state.M(cc) == 0)
+                                    {
+                                        throw new Exception("WTF");
+                                    }
+                                }
                             }
                         }
                     }
@@ -354,9 +480,9 @@
                             $"  {numFilled} / {model.NumFilled}. {availablePositions.Count(p => Depth(p) == currentDepth)} for {bots.Count} bots");
                     }
 
-                    if (filledCoords.Count != 0)
+                    if (changedCoords.Count != 0)
                     {
-                        numFilled += filledCoords.Count;
+                        numFilled += changedCoords.Count;
 
                         /*
                                                 foreach (var c in availablePositions.Where(c => Depth(c) == currentDepth))
@@ -411,6 +537,11 @@
                     return botPositions.TryGetValue(bot.FusionSTarget.Value, out another) &&
                            (another.FusionPTarget ?? another.ActedFusionPTarget) != null &&
                            (another.FusionPTarget ?? another.ActedFusionPTarget).Value.Equals(bot.Coord);
+                }
+
+                if (bot.VoidTarget != null)
+                {
+                    return state.M(bot.VoidTarget.Value) != 0 && !interferedCells.Contains(bot.VoidTarget.Value);
                 }
 
                 return IsFree(bot.Target.Value);
@@ -511,6 +642,19 @@
                     return ret;
                 }
 
+                if (bot.VoidTarget != null)
+                {
+                    interferedCells.Add(bot.VoidTarget.Value);
+                    availablePositions.Remove(bot.VoidTarget.Value);
+                    filledCoords.Add(bot.VoidTarget.Value);
+                    var ret = new Void()
+                    {
+                        Diff = bot.VoidTarget.Value.Diff(bot.Coord)
+                    };
+                    bot.VoidTarget = null;
+                    return ret;
+                }
+
                 throw new Exception($"WTF {numFilled} / {model.NumFilled}");
             }
 
@@ -541,6 +685,7 @@
 
                 bot.FissionTarget = null;
                 bot.FillTarget = null;
+                bot.VoidTarget = null;
                 bot.MoveCommands = null;
                 bot.NextCommand = 0;
 
@@ -553,6 +698,17 @@
                     foreach (var coord in bot.Coord.NearNeighbours().Where(n => n.IsValid(model.R) && IsFree(n) && Depth(n) < currentDepth))
                     {
                         bot.FissionTarget = coord;
+                        if (Trace)
+                        {
+                            if (!CanMove(bot))
+                            {
+                                CanMove(bot);
+                                throw new Exception("WTF");
+                            }
+                            Console.WriteLine(
+                                $"COORDS: {bot.Id}@{bot.Coord}, FISSION: {bot.Target}, D: {(bot.Target == null ? -1 : Depth(bot.Target.Value))}, M: {bot.MoveCommands?.Count} MS: {bot.MaxSteps} "
+                                + string.Join(", ", bot.MoveCommands ?? new List<ICommand>()));
+                        }
                         return;
                     }
                 }
@@ -577,7 +733,7 @@
 
                 foreach (var c in PathEnumerator.EnumerateReachablePaths(bot.Coord, currentDepth, bot.MaxSteps))
                 {
-                    if (Depth(c.Coord) < currentDepth)
+                    if (mode == Mode.Dissassembly || Depth(c.Coord) < currentDepth)
                     {
                         foreach (var n in c.Coord.NearNeighbours())
                         {
@@ -585,7 +741,9 @@
                             {
                                 continue;
                             }
-                            if (Depth(n) == currentDepth &&
+
+                            if (mode == Mode.Assembly &&
+                                Depth(n) == currentDepth &&
                                 availablePositions.Contains(n) &&
                                 (IsFree(n) ||(botPositions.TryGetValue(n, out var botThere) && botThere == bot)))
                             {
@@ -599,6 +757,29 @@
                                     }
                                     Console.WriteLine(
                                         $"COORDS: {bot.Id}@{bot.Coord}, FILL: {bot.Target}, D: {(bot.Target == null ? -1 : Depth(bot.Target.Value))}, M: {bot.MoveCommands?.Count} MS: {bot.MaxSteps} "
+                                        + string.Join(", ", bot.MoveCommands ?? new List<ICommand>()));
+                                }
+
+                                return;
+                            }
+
+                            if (mode == Mode.Dissassembly &&
+                                Depth(n) == currentDepth &&
+                                availablePositions.Contains(n) &&
+                                !interferedCells.Contains(n))
+                            {
+                                bot.VoidTarget = n;
+                                bot.MoveCommands = c.RecreatePath(bot.Coord);
+                                if (Trace)
+                                {
+                                    if (!CanMove(bot))
+                                    {
+                                        CanMove(bot);
+                                        throw new Exception("WTF");
+                                    }
+                                    Console.WriteLine(
+                                        $"COORDS: {bot.Id}@{bot.Coord}, VOID"
+                                        + $": {bot.Target}, D: {(bot.Target == null ? -1 : Depth(bot.Target.Value))}, M: {bot.MoveCommands?.Count} MS: {bot.MaxSteps} "
                                         + string.Join(", ", bot.MoveCommands ?? new List<ICommand>()));
                                 }
 
@@ -639,7 +820,7 @@
                     }
                 }
 
-                if (Depth(bot.Coord) >= currentDepth - 1)
+                if (mode == Mode.Assembly && Depth(bot.Coord) >= currentDepth - 1)
                 {
                     foreach (var c in PathEnumerator.EnumerateReachablePaths(bot.Coord, currentDepth, bot.MaxSteps)
                         .Where(c => Depth(c.Coord) < currentDepth - 1))

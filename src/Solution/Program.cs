@@ -9,12 +9,13 @@
     {
         private static void Main(string[] args)
         {
-            var modelName = "FA160";
+            var modelName = "FR001";
             //var modelName = "FA001";
 
-            //var srcModel = new TModel($"Data/Problems/{modelName}_src.mdl");
+            var srcModel = new TModel($"Data/Problems/{modelName}_src.mdl");
             var tgtModel = new TModel($"Data/Problems/{modelName}_tgt.mdl");
-            var srcModel = TModel.MakeEmpty(tgtModel.Name, tgtModel.R);
+            //var srcModel = TModel.MakeEmpty(tgtModel.Name, tgtModel.R);
+            //var tgtModel = TModel.MakeEmpty(srcModel.Name, srcModel.R);
 
             void TestStrategy(IStrategy strategy, bool saveTrace = false)
             {
