@@ -90,11 +90,6 @@
             int steps = 0;
             while (queue.Count != 0)
             {
-                if (++steps >= maxSteps)
-                {
-                    yield break; 
-                }
-
                 var cur = queue.Dequeue();
 
                 // TODO: smarter precompute?
@@ -109,6 +104,10 @@
                     if (TryVisit(Math.Abs(dx), dx, 0, 0))
                     {
                         yield return c;
+                        if (++steps >= maxSteps)
+                        {
+                            yield break;
+                        }
                         queue.Enqueue(c.Coord);
                     }
                 }
@@ -118,6 +117,10 @@
                     if (TryVisit(Math.Abs(dy), 0, dy, 0))
                     {
                         yield return c;
+                        if (++steps >= maxSteps)
+                        {
+                            yield break;
+                        }
                         queue.Enqueue(c.Coord);
                     }
                 }
@@ -127,6 +130,10 @@
                     if (TryVisit(Math.Abs(dz), 0, 0, dz))
                     {
                         yield return c;
+                        if (++steps >= maxSteps)
+                        {
+                            yield break;
+                        }
                         queue.Enqueue(c.Coord);
                     }
                 }

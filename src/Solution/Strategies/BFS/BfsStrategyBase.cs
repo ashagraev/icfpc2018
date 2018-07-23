@@ -62,8 +62,8 @@
                 public int IdleTime = 0;
 
                 public int MaxSteps =>
-                    //IdleTime == 0 ? 100000 :
-                    //IdleTime == 1 ? 10000000 :
+                    IdleTime == 0 ? 10000 :
+                    IdleTime == 1 ? 100000 :
                     int.MaxValue;
 
                 public bool IdleTooLong => IdleTime > 3;
