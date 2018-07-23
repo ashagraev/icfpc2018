@@ -45,10 +45,10 @@
             }
             StrategyStats[BaselineStrategy.Name] = 0;
 
-   //         var models = LoadModels(modelsDirectory);
+            var models = LoadModels(modelsDirectory);
             var reassemblyModels = LoadReassemblyModels(modelsDirectory);
 
-        //    Parallel.ForEach<TModel>(models, new ParallelOptions { MaxDegreeOfParallelism = 15 }, ProcessModel);
+            Parallel.ForEach<TModel>(models, new ParallelOptions { MaxDegreeOfParallelism = 15 }, ProcessModel);
             Parallel.ForEach<KeyValuePair<TModel, TModel>>(reassemblyModels, new ParallelOptions { MaxDegreeOfParallelism = 15 }, ProcessReassembly);
 
             foreach (IStrategy s in Strategies)
@@ -73,6 +73,11 @@
             var writer = new StreamWriter(stream);
 
             var traceFile = $"{BestStrategiesDirectory}/{model.Name}.nbt";
+
+            if (Path.GetFileName(model.Name).StartsWith("FA"))
+            {
+                return;
+            }
 
             if (!AllowedPrefixes.Any(x => model.Name.StartsWith(x)))
             {

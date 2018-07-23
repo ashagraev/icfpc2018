@@ -11,7 +11,7 @@
     {
         static void Main(string[] args)
         {
-            var allowedPrefixes = args.Length > 0 ? args : new[] { "FA" };
+            var allowedPrefixes = args.Length > 0 ? args : new[] { "FD" };
             var strategies = AppDomain.CurrentDomain.GetAssemblies()
                 .SelectMany(assembly => assembly.GetTypes())
                 .Where(
